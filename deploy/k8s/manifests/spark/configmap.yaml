@@ -22,5 +22,28 @@ data:
     spark.sql.catalog.lakehouse.s3.endpoint http://garage.finance-platform.svc.cluster.local:3900
     spark.sql.catalog.lakehouse.s3.path-style-access true
     spark.sql.catalog.lakehouse.client.region garage
+    spark.hadoop.fs.s3a.endpoint http://garage.finance-platform.svc.cluster.local:3900
+    spark.hadoop.fs.s3a.endpoint.region garage
+    spark.hadoop.fs.s3a.path.style.access true
+    spark.hadoop.fs.s3a.connection.ssl.enabled false
+    spark.hadoop.fs.s3a.impl org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.aws.credentials.provider software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider
+    spark.sql.session.timeZone UTC
+    spark.eventLog.enabled true
+    spark.eventLog.dir file:///tmp/spark-events
+    spark.history.fs.logDirectory file:///tmp/spark-events
     spark.sql.shuffle.partitions 4
     spark.ui.enabled false
+  log4j2.properties: |
+    rootLogger.level = warn
+    rootLogger.appenderRefs = console
+    rootLogger.appenderRef.console.ref = console
+
+    appender.console.type = Console
+    appender.console.name = console
+    appender.console.target = SYSTEM_ERR
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = %d{yy/MM/dd HH:mm:ss} %p %c{1}: %m%n
+
+    logger.iceberg.name = org.apache.iceberg
+    logger.iceberg.level = info
