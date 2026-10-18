@@ -1,0 +1,46 @@
+# Official neo4j/neo4j chart 5.26.32; release name MUST be neo4j.
+neo4j:
+  name: neo4j
+  edition: community
+  passwordFromSecret: neo4j-auth
+  resources:
+    cpu: "500m"
+    memory: "2Gi"
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/component: graph-database
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: finance-platform
+  operations:
+    # This controls the enterprise ENABLE SERVER job, not standalone startup.
+    enableServer: false
+image:
+  customImage: neo4j:5.26.32-community
+services:
+  neo4j:
+    enabled: false # Disable external LoadBalancer and its cleanup hook.
+    cleanup:
+      enabled: false
+  admin:
+    enabled: false
+  internals:
+    enabled: false
+volumes:
+  data:
+    mode: dynamic
+    dynamic:
+      storageClassName: local-path
+      accessModes: [ReadWriteOnce]
+      requests:
+        storage: 10Gi
+    labels:
+      app.kubernetes.io/name: neo4j
+      app.kubernetes.io/component: graph-database
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/part-of: finance-platform
+config:
+  server.memory.heap.initial_size: "512m"
+  server.memory.heap.max_size: "512m"
+  server.memory.pagecache.size: "512m"
+podSpec:
+  podAntiAffinity: false

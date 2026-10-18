@@ -1,0 +1,56 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: finance-connect
+  namespace: finance-platform
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+  labels:
+    app.kubernetes.io/name: kafka-connect
+    app.kubernetes.io/component: messaging
+    app.kubernetes.io/managed-by: platform-config
+    app.kubernetes.io/part-of: finance-platform
+spec:
+  version: 4.2.0
+  replicas: 0 # Activate only after a verified plugin image and schema exist.
+  image: __KAFKA_CONNECT_IMAGE__
+  bootstrapServers: finance-kafka-kafka-bootstrap:9092
+  groupId: finance-connect
+  configStorageTopic: finance-connect-configs
+  offsetStorageTopic: finance-connect-offsets
+  statusStorageTopic: finance-connect-status
+  config:
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    offset.storage.partitions: 1
+    status.storage.partitions: 1
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false
+    config.providers: directory
+    config.providers.directory.class: org.apache.kafka.common.config.provider.DirectoryConfigProvider
+    config.providers.directory.param.allowed.paths: /mnt/neo4j-auth
+  resources:
+    requests:
+      cpu: 100m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  jvmOptions:
+    -Xms: 256m
+    -Xmx: 512m
+  template:
+    pod:
+      volumes:
+        - name: neo4j-auth
+          secret:
+            secretName: neo4j-auth
+            items:
+              - key: neo4j-password
+                path: neo4j-password
+    connectContainer:
+      volumeMounts:
+        - name: neo4j-auth
+          mountPath: /mnt/neo4j-auth

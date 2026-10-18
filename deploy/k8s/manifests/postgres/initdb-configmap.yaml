@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  namespace: finance-platform
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: finance-platform
+    app.kubernetes.io/managed-by: kubectl
+data:
+  10-platform-init.sh: |
+    #!/usr/bin/env bash
+    set -Eeuo pipefail
+    trap 'echo "Platform init failed at line $LINENO; inspect logs, preserve PVC, repair explicitly." >&2' ERR
+    echo 'Starting platform database initialization.'
+    export AIRFLOW_PASSWORD ICEBERG_PASSWORD
+    AIRFLOW_PASSWORD="$(cat /run/secrets/postgres/airflow-password)"
+    ICEBERG_PASSWORD="$(cat /run/secrets/postgres/iceberg-password)"
+    test -n "$AIRFLOW_PASSWORD" && test -n "$ICEBERG_PASSWORD"
+    # Passwords enter psql via environment, never command-line arguments.
+    # Disable statement logging before password-bearing statements, even on error.
+    psql -Xw --username postgres --dbname postgres -v ON_ERROR_STOP=1 <<'SQL'
+    SET log_statement = 'none';
+    SET log_min_error_statement = 'panic';
+    \getenv airflow_password AIRFLOW_PASSWORD
+    \getenv iceberg_password ICEBERG_PASSWORD
+    SELECT format('CREATE ROLE airflow_user LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'airflow_password')
+    WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='airflow_user') \gexec
+    SELECT format('CREATE ROLE iceberg_user LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'iceberg_password')
+    WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='iceberg_user') \gexec
+    SELECT 'CREATE DATABASE airflow_meta OWNER postgres'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname='airflow_meta') \gexec
+    SELECT 'CREATE DATABASE iceberg_catalog OWNER postgres'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname='iceberg_catalog') \gexec
+    REVOKE ALL ON DATABASE airflow_meta, iceberg_catalog, postgres, template1 FROM PUBLIC;
+    REVOKE ALL ON DATABASE airflow_meta FROM iceberg_user;
+    REVOKE ALL ON DATABASE iceberg_catalog FROM airflow_user;
+    GRANT CONNECT, TEMPORARY ON DATABASE airflow_meta TO airflow_user;
+    GRANT CONNECT, TEMPORARY ON DATABASE iceberg_catalog TO iceberg_user;
+    \connect airflow_meta
+    REVOKE ALL ON SCHEMA public FROM PUBLIC;
+    REVOKE ALL ON SCHEMA public FROM iceberg_user;
+    GRANT USAGE, CREATE ON SCHEMA public TO airflow_user;
+    \connect iceberg_catalog
+    REVOKE ALL ON SCHEMA public FROM PUBLIC;
+    REVOKE ALL ON SCHEMA public FROM airflow_user;
+    GRANT USAGE, CREATE ON SCHEMA public TO iceberg_user;
+    SQL
+    unset AIRFLOW_PASSWORD ICEBERG_PASSWORD
+    touch "$PGDATA/.platform-init-complete"
+    echo 'Platform database initialization complete.'

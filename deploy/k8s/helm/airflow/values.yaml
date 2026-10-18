@@ -1,0 +1,86 @@
+# Official apache-airflow/airflow chart 1.18.0; namespace finance-platform.
+# Repository/tag are derived from the user supplied full AIRFLOW_IMAGE.
+airflowVersion: '3.0.2'
+defaultAirflowRepository: __AIRFLOW_REPOSITORY__
+defaultAirflowTag: '__AIRFLOW_TAG__'
+executor: LocalExecutor
+labels:
+  app.kubernetes.io/part-of: finance-platform
+  app.kubernetes.io/name: airflow
+  app.kubernetes.io/component: orchestration
+  app.kubernetes.io/managed-by: Helm
+postgresql:
+  enabled: false
+redis:
+  enabled: false
+pgbouncer:
+  enabled: false
+flower:
+  enabled: false
+statsd:
+  enabled: false
+triggerer:
+  enabled: false
+workers:
+  replicas: 0
+  persistence:
+    enabled: false
+  logGroomerSidecar:
+    enabled: false
+rbac:
+  create: false
+allowPodLaunching: false
+multiNamespaceMode: false
+data:
+  metadataSecretName: airflow-metadata
+scheduler:
+  replicas: 1
+  env:
+    - name: ARTICLE_COLLECTOR_IMAGE
+      value: __ARTICLE_COLLECTOR_IMAGE__
+  serviceAccount:
+    create: false
+    name: airflow-jobs
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: '1', memory: 2Gi}
+  logGroomerSidecar:
+    enabled: false
+webserver:
+  defaultUser:
+    enabled: false
+apiServer:
+  defaultUser:
+    enabled: false
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 1Gi}
+dagProcessor:
+  enabled: true
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 1Gi}
+  logGroomerSidecar:
+    enabled: false
+migrateDatabaseJob:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+createUserJob:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+config:
+  core:
+    auth_manager: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    load_examples: 'False'
+    dags_are_paused_at_creation: 'True'
+    parallelism: 2
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: false
+logs:
+  persistence:
+    enabled: false

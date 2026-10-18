@@ -1,0 +1,126 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-s3-check
+  namespace: finance-platform
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: object-storage
+    app.kubernetes.io/part-of: finance-platform
+    app.kubernetes.io/managed-by: kubectl
+data:
+  s3-check.py: |
+    """Idempotent warehouse initialization and real S3 compatibility smoke test."""
+    import hashlib
+    import os
+    import sys
+    import urllib.error
+    import urllib.request
+
+    import boto3
+    from botocore.config import Config
+    from botocore.exceptions import ClientError
+
+
+    def main():
+        endpoint = os.environ["S3_ENDPOINT"]
+        bucket = os.environ.get("S3_BUCKET", "warehouse")
+        s3 = boto3.client(
+            "s3", endpoint_url=endpoint,
+            config=Config(
+                region_name="garage", signature_version="s3v4",
+                s3={"addressing_style": "path"},
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+                retries={"max_attempts": 3, "mode": "standard"},
+                connect_timeout=5, read_timeout=20,
+            ),
+        )
+        try:
+            s3.head_bucket(Bucket=bucket)
+        except ClientError as exc:
+            if exc.response["ResponseMetadata"]["HTTPStatusCode"] != 404:
+                raise
+            s3.create_bucket(Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": "garage"})
+        print("PASS: warehouse exists (repeat-safe initialization)")
+        expected = os.environ.get("EXPECT_KEY", "")
+        if expected:
+            body = s3.get_object(Bucket=bucket, Key=expected)["Body"].read()
+            if body != b"finance-platform-persistence-v1":
+                raise RuntimeError("Persistent object content mismatch")
+            print("PASS: pre-restart object persisted")
+
+        key = "platform-validation/" + os.environ["VERIFY_TOKEN"]
+        payload = b"finance-platform-persistence-v1"
+        s3.put_object(Bucket=bucket, Key=key, Body=payload)
+        if s3.get_object(Bucket=bucket, Key=key)["Body"].read() != payload:
+            raise RuntimeError("Object download differs from upload")
+        if s3.head_object(Bucket=bucket, Key=key)["ContentLength"] != len(payload):
+            raise RuntimeError("HEAD returned incorrect length")
+        objects = s3.list_objects_v2(Bucket=bucket, Prefix=key).get("Contents", [])
+        if key not in [item["Key"] for item in objects]:
+            raise RuntimeError("Uploaded object missing from list")
+        print("PASS: PUT/GET/HEAD/LIST content verified")
+
+        # Iceberg S3FileIO uses multipart uploads for large data files.
+        multi_key = key + "-multipart"
+        upload_id = s3.create_multipart_upload(Bucket=bucket, Key=multi_key)["UploadId"]
+        try:
+            parts = []
+            digest = hashlib.sha256()
+            for number, part in enumerate((b"x" * (5 * 1024 * 1024), b"final-part"), 1):
+                digest.update(part)
+                response = s3.upload_part(
+                    Bucket=bucket, Key=multi_key, UploadId=upload_id,
+                    PartNumber=number, Body=part,
+                )
+                parts.append({"PartNumber": number, "ETag": response["ETag"]})
+            s3.complete_multipart_upload(
+                Bucket=bucket, Key=multi_key, UploadId=upload_id,
+                MultipartUpload={"Parts": parts},
+            )
+        except Exception:
+            s3.abort_multipart_upload(Bucket=bucket, Key=multi_key, UploadId=upload_id)
+            raise
+        actual = s3.get_object(Bucket=bucket, Key=multi_key)["Body"].read()
+        if hashlib.sha256(actual).digest() != digest.digest():
+            raise RuntimeError("Multipart content checksum mismatch")
+        s3.delete_object(Bucket=bucket, Key=multi_key)
+        try:
+            s3.head_object(Bucket=bucket, Key=multi_key)
+        except ClientError as exc:
+            if exc.response["ResponseMetadata"]["HTTPStatusCode"] != 404:
+                raise
+        else:
+            raise RuntimeError("Deleted object remains accessible")
+        print("PASS: multipart upload checksum and DELETE verified")
+
+        try:
+            urllib.request.urlopen(f"{endpoint}/{bucket}/{key}", timeout=5)
+        except urllib.error.HTTPError as exc:
+            if exc.code != 403:
+                raise RuntimeError("Unexpected anonymous HTTP response") from None
+        else:
+            raise RuntimeError("Anonymous object access allowed")
+        print("PASS: anonymous GET denied (HTTP 403)")
+        print("Persistence object:", key)
+
+
+    if __name__ == "__main__":
+        try:
+            main()
+        except ClientError as exc:
+            print(
+                "FAIL: S3", exc.response["Error"]["Code"],
+                "HTTP", exc.response["ResponseMetadata"]["HTTPStatusCode"],
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        except RuntimeError as exc:
+            print("FAIL:", str(exc), file=sys.stderr)
+            sys.exit(1)
+        except Exception as exc:
+            # Do not echo request headers, auth credentials, URLs or response objects.
+            print("FAIL:", type(exc).__name__, file=sys.stderr)
+            sys.exit(1)

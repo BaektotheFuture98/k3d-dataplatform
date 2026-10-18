@@ -1,0 +1,110 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "bronze-to-silver",
+    "namespace": "finance-platform",
+    "labels": {
+      "app.kubernetes.io/name": "bronze-to-silver",
+      "app.kubernetes.io/part-of": "finance-platform",
+      "app.kubernetes.io/component": "pipeline",
+      "app.kubernetes.io/managed-by": "platform-config"
+    }
+  },
+  "spec": {
+    "replicas": 0,
+    "revisionHistoryLimit": 2,
+    "strategy": {
+      "type": "Recreate"
+    },
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "bronze-to-silver"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "bronze-to-silver",
+          "app.kubernetes.io/part-of": "finance-platform",
+          "app.kubernetes.io/component": "pipeline",
+          "app.kubernetes.io/managed-by": "platform-config"
+        }
+      },
+      "spec": {
+        "automountServiceAccountToken": false,
+        "restartPolicy": "Always",
+        "terminationGracePeriodSeconds": 120,
+        "containers": [
+          {
+            "name": "base",
+            "image": "__BRONZE_TO_SILVER_IMAGE__",
+            "imagePullPolicy": "IfNotPresent",
+            "env": [
+              {
+                "name": "AWS_ENDPOINT_URL",
+                "value": "http://garage.finance-platform.svc.cluster.local:3900"
+              },
+              {
+                "name": "AWS_REGION",
+                "value": "garage"
+              },
+              {
+                "name": "S3_PATH_STYLE_ACCESS",
+                "value": "true"
+              },
+              {
+                "name": "S3_SIGNATURE_VERSION",
+                "value": "s3v4"
+              },
+              {
+                "name": "WAREHOUSE_URI",
+                "value": "s3://warehouse/"
+              },
+              {
+                "name": "ICEBERG_CATALOG_URI",
+                "value": "http://iceberg-rest:8181"
+              },
+              {
+                "name": "AWS_ACCESS_KEY_ID",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "garage-credentials",
+                    "key": "s3-access-key-id"
+                  }
+                }
+              },
+              {
+                "name": "AWS_SECRET_ACCESS_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "garage-credentials",
+                    "key": "s3-secret-access-key"
+                  }
+                }
+              },
+              {
+                "name": "SPARK_MASTER",
+                "value": "local[2]"
+              },
+              {
+                "name": "CHECKPOINT_URI",
+                "value": "s3://warehouse/checkpoints/bronze-to-silver/"
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "250m",
+                "memory": "512Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

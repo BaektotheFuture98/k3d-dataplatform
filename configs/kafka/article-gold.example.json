@@ -1,0 +1,11 @@
+{
+  "article_id": "example-source:article-001",
+  "source_version": 1,
+  "event_id": "example-source:article-001:v1",
+  "title": "Example article",
+  "url": "https://example.invalid/article-001",
+  "published_at": "2026-10-18T00:00:00Z",
+  "events": [
+    {"event_id": "example-event-001", "type": "earnings", "occurred_at": "2026-10-18T00:00:00Z"}
+  ]
+}

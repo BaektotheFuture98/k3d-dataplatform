@@ -1,0 +1,18 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: article-gold
+  namespace: finance-platform
+  labels:
+    strimzi.io/cluster: finance-kafka
+    app.kubernetes.io/name: article-gold
+    app.kubernetes.io/component: messaging
+    app.kubernetes.io/managed-by: platform-config
+    app.kubernetes.io/part-of: finance-platform
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    min.insync.replicas: 1
+    cleanup.policy: delete
+    retention.ms: 604800000

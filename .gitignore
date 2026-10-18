@@ -1,0 +1,11 @@
+# Actual credentials and database backups must stay outside Git.
+.env
+.env.*
+!.env.example
+**/secrets/
+**/*secret.local*
+**/*.dump
+**/*.backup
+__pycache__/
+deploy/rendered*/
+configs/platform-images.env

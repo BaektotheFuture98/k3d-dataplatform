@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: neo4j-article-gold
+  namespace: finance-platform
+  labels:
+    strimzi.io/cluster: finance-connect
+    app.kubernetes.io/name: neo4j-sink
+    app.kubernetes.io/component: messaging
+    app.kubernetes.io/managed-by: platform-config
+    app.kubernetes.io/part-of: finance-platform
+spec:
+  class: org.neo4j.connectors.kafka.sink.Neo4jConnector
+  tasksMax: 1
+  state: stopped # Explicit activation after constraints and event contract validation.
+  config:
+    topics: article-gold
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false
+    consumer.override.auto.offset.reset: earliest
+    errors.tolerance: none
+    neo4j.uri: bolt://neo4j:7687
+    neo4j.database: neo4j
+    neo4j.authentication.type: BASIC
+    neo4j.authentication.basic.username: neo4j
+    neo4j.authentication.basic.password: '${directory:/mnt/neo4j-auth:neo4j-password}'
+    neo4j.batch-size: 100
+    neo4j.cypher.topic.article-gold: >-
+      WITH __value AS event
+      MERGE (a:Article {article_id: event.article_id})
+      ON CREATE SET a.source_version = -1
+      WITH a, event WHERE event.source_version > a.source_version
+      SET a.source_version = event.source_version,
+          a.title = event.title, a.url = event.url,
+          a.published_at = event.published_at
+      WITH a, event
+      UNWIND event.events AS item
+      MERGE (e:Event {event_id: item.event_id})
+      ON CREATE SET e.type = item.type, e.occurred_at = item.occurred_at
+      MERGE (a)-[:MENTIONS]->(e)

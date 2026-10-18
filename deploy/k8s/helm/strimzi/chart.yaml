@@ -1,0 +1,7 @@
+repository: https://strimzi.io/charts/
+chart: strimzi-kafka-operator
+version: 0.51.0
+release: strimzi-cluster-operator
+namespace: finance-platform
+kafkaVersion: 4.2.0
+crdApiVersion: kafka.strimzi.io/v1
