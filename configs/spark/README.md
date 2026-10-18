@@ -25,9 +25,9 @@ version.txt=1.11.0을 명시해 fixture를 패키징한다. 베이스 이미지�
 
 ```sh
 docker build -f docker/iceberg-rest/Dockerfile -t finance-platform/iceberg-rest:1.11.0-pg42.7.8 .
-docker build -f docker/spark/Dockerfile -t finance-platform/spark:4.1.2-iceberg1.11.0 .
+docker build -f docker/spark/Dockerfile -t finance-platform/spark:4.1.2-iceberg1.11.0-s3a-v1 .
 k3d image import finance-platform/iceberg-rest:1.11.0-pg42.7.8 --cluster dev
-k3d image import finance-platform/spark:4.1.2-iceberg1.11.0 --cluster dev
+k3d image import finance-platform/spark:4.1.2-iceberg1.11.0-s3a-v1 --cluster dev
 ```
 
 렌더링 시 `__ICEBERG_REST_IMAGE__`, `__SPARK_IMAGE__`를 실제 사용자 이미지명으로 대체한다. ARM 노드에서는 해당 아키텍처로 빌드한다. 업무 pipeline 코드는 포함하지 않는다.
@@ -39,9 +39,37 @@ k3d image import finance-platform/spark:4.1.2-iceberg1.11.0 --cluster dev
 Garage `http://garage.finance-platform.svc.cluster.local:3900`, region `garage`, path-style, warehouse `s3://warehouse/`. Catalog와 Spark는 AWS SDK 기본 credential provider가 읽는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`에 `garage-credentials/s3-access-key-id` / `s3-secret-access-key`를 직접 주입한다. 키는 spark-defaults, 이미지, ConfigMap에 넣지 않는다.
 
 Jupyter는 replicas=1이고 `jupyter-auth/token`으로 인증한다. Secret을 생성했고 무토큰/잘못된 토큰은
-HTTP403, 올바른 토큰은 HTTP200으로 확인했다. ClusterIP `jupyter:8888`만 사용하며 로컬 port-forward로 접근한다.
+HTTP403, 올바른 토큰은 HTTP200으로 확인했다. ClusterIP `jupyter:8888`를 유지하며
+이후 추가한 Traefik Ingress로 Mac의 `http://jupyter.localhost:8080`에서 접근한다.
+토큰 인증과 WebSocket 연결을 검증했다. [로컬 UI 접속 설정](../ingress/README.md)을 참고한다.
 노트북은 `jupyter-workspace` local-path PVC에 보관한다. Spark는 각 프로세스의 `local[2]`로 실행한다.
 Spark UI는 비활성화했다. `configs/spark/spark-defaults.conf`와 ConfigMap을 함께 유지한다.
+
+## 원본 Spark 설정과의 동기화
+
+기존 프로젝트의 `spark-defaults.conf`와 `log4j2.properties`를 기준으로 공통 설정을 정리했다.
+Iceberg Catalog 설정은 유지하고 MinIO endpoint를 Garage로 바꿨다.
+S3A에도 Garage endpoint·region·path-style·HTTP 설정을 적용한다.
+인증은 `EnvironmentVariableCredentialsProvider`를 사용하며 설정 파일에 키를 넣지 않는다.
+
+이미지에는 Spark 배포판의 Hadoop과 동일한 `hadoop-aws:3.4.2` 및
+Hadoop 릴리스 POM에 지정된 `software.amazon.awssdk:bundle:2.29.52`를 추가한다.
+두 artifact의 SHA-256은 Dockerfile에 고정했다.
+근거: [Hadoop 3.4.2 POM](https://github.com/apache/hadoop/blob/rel/release-3.4.2/hadoop-project/pom.xml),
+[S3A 의존성 안내](https://hadoop.apache.org/docs/r3.4.2/hadoop-aws/tools/hadoop-aws/index.html).
+Iceberg AWS bundle도 유지하므로 클래스패스 조합은 S3A 체크포인트와 Iceberg 입출력을 함께 검증한다.
+실제 검증에서 AWS SDK는 `bundle-2.29.52.jar`에서 로드되었고, 별도 Spark 프로세스로
+체크포인트를 복구해 합성 데이터가 3행에서 중복 없이 6행으로 이어졌다.
+같은 클래스패스의 Iceberg 쓰기·읽기와 검증 데이터 정리도 성공했다.
+
+원본과 동일하게 console root WARN·Iceberg INFO 로깅과 Spark 이벤트 로그를 활성화한다.
+이벤트 로그는 현재 컨테이너의 쓰기 가능한 `file:///tmp/spark-events`에 저장한다.
+원본의 `/home/iceberg/spark-events`와 경로만 다르며 별도 History Server나 로그 영속 볼륨은 구성하지 않는다.
+Pod 교체 시 이벤트 로그는 유지되지 않는다. 노트북 PVC와 Garage의 checkpoint는 별개로 보존한다.
+
+2 CPU 개발 노드에 맞춘 driver 1GiB, shuffle partitions=4, UI 비활성화와 Java 21은 유지한다.
+UTC를 공통 설정으로 지정했다. 두 업무 streaming 템플릿도 동일 ConfigMap을 사용하지만
+업무 코드·이미지의 준비와 실행 검증은 별도다.
 
 Catalog와 Jupyter에는 `AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED`,
 `AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED`를 설정한다. 기본 AWS SDK CRC trailer는
@@ -58,3 +86,10 @@ REST 서버는 Apache의 **테스트 fixture**이며 운영용 서버가 아니�
 보고된 선택적 Flink 클래스 오류가 재현되지 않았으며 streaming·업무 변환 전반의 호환성을 보장하지 않는다.
 Jupyter HTTP 인증과 별도 PySpark 프로세스는 확인했지만 브라우저 노트북 UI/kernel 상호작용은 미검증이다.
 기존 데이터를 삭제하거나 PVC를 재생성하지 않았다.
+
+## Article 테이블 구성
+
+후속 요청으로 기존 프로젝트 노트북의 생성 정의를 옮겨 `bronze.article`, `silver.article`,
+`gold.graph_article`, `ops.ontology_batch_job`을 생성했다. 스키마·파티션·속성·0행을 확인했고
+노트북을 새 커널에서 두 번 실행해 재실행 가능 여부도 확인했다.
+[노트북 안내](../../workspace/notebooks/README.md)와 [실행 기록](../runtime/VALIDATION.md)을 참고한다.

@@ -1,24 +1,136 @@
-# 파이프라인 이미지 및 실행 계약
+# Article 데이터 파이프라인
 
-파일만 작성한 상태다. 수집, 정제, Gold 변환, 발행 업무 애플리케이션은 **미구현**이며 사용자가 Docker Hub 이미지를 제공해야 한다. 배포 성공/업무 처리/중복 방지 보장은 검증하지 않았다.
+기존 `data_platform` 프로젝트의 Bronze→Silver, Silver→Gold 코드를 현재 k3d 환경으로 이식했다.
+실제 Gemini 호출은 하지 않으며 두 Deployment는 `replicas: 0`으로 배포 준비한다.
+기사 수집기·Gold Publisher·Kafka/Neo4j 업무 적재는 이번 구현 범위에 포함하지 않는다.
 
-| 리소스 | 이미지 토큰 | 프로세스 계약 |
+## 처리 흐름
+
+```text
+lakehouse.bronze.article
+  → 품질 검사·문자열 정규화·기사 ID·최신 상태 MERGE
+lakehouse.silver.article
+  → 미처리 기사 선택 → Gemini Batch → 엔터티 해소·RDF·SHACL
+lakehouse.gold.graph_article
+
+lakehouse.ops.ontology_batch_job: 제출·쿼터 대기·재시도·완료 상태
+```
+
+| 작업 | 코드 | 이미지 |
 | --- | --- | --- |
-| article-collector manual Job | `__ARTICLE_COLLECTOR_IMAGE__` | 이미지 ENTRYPOINT가 한 번 수집 후 0으로 종료, 실패는 비영(非零) 종료 |
-| bronze-to-silver Deployment | `__BRONZE_TO_SILVER_IMAGE__` | 이미지 ENTRYPOINT가 독립 Spark local[2] streaming 프로세스 시작 |
-| silver-to-gold Deployment | `__SILVER_TO_GOLD_IMAGE__` | 이미지 ENTRYPOINT가 별도 Spark local[2] streaming 프로세스 시작 |
-| gold-publisher CronJob | `__GOLD_PUBLISHER_IMAGE__` | 이미지 ENTRYPOINT가 한 번 durable 변경 발행 후 종료 |
+| Bronze→Silver | `workspace/pipelines/article_bronze_to_silver/` | `finance-platform/article-bronze-to-silver:v1` |
+| Silver→Gold | `workspace/pipelines/article_silver_to_gold/` | `finance-platform/article-silver-to-gold:v1` |
 
-각 토큰은 immutable digest 또는 사용자 게시 tag를 포함하는 전체 이미지 참조로 치환한다. `command`/`args`를 지정하지 않았으므로 위 ENTRYPOINT를 이미지가 제공해야 한다. 저장소에 존재하지 않는 Python module/script를 실행하도록 가정하지 않는다. Spark 이미지 기반 애플리케이션은 Spark 4.1.2/Iceberg 1.11.0 및 필요한 S3 dependencies를 제공해야 하며 `SPARK_MASTER`와 아래 환경변수를 실제 Spark/Iceberg 설정에 연결해야 한다. 환경변수만으로 라이브러리 설정이 자동 생성되지는 않는다.
+두 이미지 모두 검증한 Spark 4.1.2 / Iceberg 1.11.0 / Hadoop S3A 기반 이미지를 사용한다.
+원본의 `datetime.UTC`·`StrEnum`과 의존성에 맞춰 별도 Python 3.13.14 환경을 사용한다.
+`workspace/pipelines/uv.lock`으로 Python 의존성을 고정하며 PySpark는 기반 Spark 배포판에서 제공한다.
+원본의 `.env`, 인증정보, 불필요한 전체 프로젝트 의존성은 복사하지 않는다.
 
-모든 워크로드는 `finance-platform`. 공통 환경변수는 `AWS_ENDPOINT_URL=http://garage.finance-platform.svc.cluster.local:3900`, `AWS_REGION=garage`, `S3_PATH_STYLE_ACCESS=true`, `S3_SIGNATURE_VERSION=s3v4`, `WAREHOUSE_URI=s3://warehouse/`, `ICEBERG_CATALOG_URI=http://iceberg-rest:8181`이다. AWS 자격증명은 `garage-credentials`의 `s3-access-key-id`/`s3-secret-access-key`에서 가져온다. 수집은 `BRONZE_URI=s3://warehouse/bronze/articles/`를 사용한다. 외부 API가 필요한 경우에만 사용자가 collector Pod에 `collector-api` Secret의 합의한 키를 명시적으로 추가한다. 현재 API key를 요구하거나 plaintext로 저장하지 않는다.
+## 환경변수의 소유권
 
-스트리밍 Deployment는 각각 `replicas: 0`, 전략 `Recreate`이고 별도의 `CHECKPOINT_URI=s3://warehouse/checkpoints/bronze-to-silver/` 또는 `.../silver-to-gold/`를 사용한다. 동일 query checkpoint를 여러 프로세스가 공유하면 안 된다. 애플리케이션이 SIGTERM을 받아 신규 batch를 멈추고 120초 안에 진행 중 batch/checkpoint를 안전하게 마친 뒤 종료해야 한다. 재시작 때 동일 checkpoint를 재사용한다. 가짜 HTTP port/probe는 넣지 않았다. 이미지가 준비되면 실제 batch 진행/heartbeat, dependency 장애와 startup 지연을 구분하는 app-specific startup/readiness/liveness 계약을 구현·검증한 후 probe를 추가해야 한다. 프로세스 실행만으로 streaming의 정상 진행을 보장하지 않는다.
+| 위치 | 설정 |
+| --- | --- |
+| `spark-config` ConfigMap → `/etc/spark` | Spark local[2], Catalog, Garage S3FileIO·S3A, UTC, 로그 |
+| `bronze-to-silver-config` ConfigMap → 환경변수 | Bronze/Silver 테이블, 체크포인트, 처리 주기, 파일 제한 |
+| `silver-to-gold-config` ConfigMap → 환경변수 | Silver/Gold/Ops 테이블, 체크포인트, 모델·온톨로지·배치 제한 |
+| `garage-credentials` Secret | 두 작업의 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| `gemini-credentials` Secret의 `api-key` | Silver→Gold의 `GOOGLE_API_KEY` |
 
-Publisher는 `KAFKA_BOOTSTRAP_SERVERS=finance-kafka-kafka-bootstrap:9092`, `KAFKA_TOPIC=article-gold`, `PUBLISHER_STATE_URI=s3://warehouse/checkpoints/gold-publisher/`를 받는다. CronJob은 `suspend: true`, `concurrencyPolicy: Forbid`, 성공 1/실패 2개 history, 24시간 TTL이다. 5분 schedule은 검토용 기본값이다. 실행 시간 제한은 240초다. 수동 collector Job은 apply하면 바로 실행되므로 일반 구성 apply 묶음에 포함하지 말고 사용자가 명시적으로 수집을 시작할 때 고유 Job 이름으로 제출한다. 같은 이름의 완료 Job은 재실행되지 않는다.
+애플리케이션은 `.env`를 자동으로 읽지 않는다. 필수값, 3단계 테이블 식별자,
+S3A 체크포인트와 양수 처리 주기를 시작 시 검증한다. 오류 로그에는 자격증명이나 입력값을 출력하지 않는다.
+공통 설정은 `SPARK_CONF_DIR=/etc/spark`로 읽고 Garage 호환 checksum 환경변수도 주입한다.
 
-안전한 재처리는 별도 업무 구현이 필요하다. 문서/이벤트는 안정적인 `article_id`, 기사별 단조 증가하는 `source_version`, 재발행에도 동일한 `event_id`를 사용한다. Publisher는 durable outbox 또는 durable change watermark로 변경을 추적하고 Kafka ack 이후 진척을 저장해야 한다. 전송 성공과 watermark 저장 사이 장애로 중복이 생길 수 있다. Consumer/Neo4j sink는 `article_id` 기준 MERGE와 원자적인 version 비교를 결합하여 이전/동일 `source_version` 이벤트가 최신 상태를 덮어쓰지 않게 해야 한다. 이벤트 dedup과 watermark, version ordering은 여기서 구현되지 않았으며 exactly-once를 주장하지 않는다.
+| 변수 | Bronze→Silver 기본값 | Silver→Gold 기본값 |
+| --- | --- | --- |
+| `BRONZE_TABLE` | `lakehouse.bronze.article` | 사용 안 함 |
+| `SILVER_TABLE` | `lakehouse.silver.article` | `lakehouse.silver.article` |
+| `GOLD_TABLE` | 사용 안 함 | `lakehouse.gold.graph_article` |
+| `BATCH_JOB_TABLE` | 사용 안 함 | `lakehouse.ops.ontology_batch_job` |
+| `CHECKPOINT_URI` | `s3a://warehouse/checkpoints/article-bronze-to-silver-v2` | `s3a://warehouse/checkpoints/article-silver-to-gold` |
+| `TRIGGER_INTERVAL` | `1 minute` | `1 minute` |
+| `MAX_FILES_PER_MICRO_BATCH` | `100` | 사용 안 함 |
+| `PIPELINE_RUN_MODE` | `stream` | `stream` |
 
-나중에 이미지/ENTRYPOINT/env와 schema/checkpoint 호환성을 확인하고 Secret·Catalog·Kafka가 준비된 후 수동 Job부터 검증한다. 각 streaming Deployment를 독립적으로 1 replica로 올리고 재시작/복구/중복·역순 이벤트 검증을 마친 뒤 publisher schedule을 정해 suspend를 해제한다. Airflow 수집 설정은 [Airflow 계약](../airflow/README.md)을 따른다.
+Gold ConfigMap은 원본의 비민감 설정인 `SEMANTIC_LLM_MODEL=gemini-3.1-flash-lite`,
+`ONT_VERSION=v1`을 지정한다. 코드에서는 모델·버전·API 키가 필수다.
+`SEMANTIC_BATCH_SIZE=100`, `SEMANTIC_BATCH_MAX_BYTES=18874368`,
+`SEMANTIC_BATCH_POLL_SECONDS=300`, `SEMANTIC_QUOTA_PAUSE_SECONDS=3600`도 환경변수로 제어한다.
 
-공식 근거: [Kubernetes Job](https://kubernetes.io/docs/concepts/workloads/controllers/job/), [CronJob concurrency/suspend/history](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/), [KubernetesJobOperator](https://airflow.apache.org/docs/apache-airflow-providers-cncf-kubernetes/10.24.0/_api/airflow/providers/cncf/kubernetes/operators/job/index.html).
+`PIPELINE_RUN_MODE=validate`는 설정과 테이블을 검사하고 종료하며 Gemini 클라이언트를 생성하지 않는다.
+Bronze는 `available_now`도 지원하여 현재까지 들어온 데이터를 유한한 실행으로 처리할 수 있다.
+SIGTERM/SIGINT는 활성 streaming query를 중지하고 Spark 자원을 반환한다.
+
+## 데이터 처리 계약
+
+Bronze는 HTTP 200, 필수값·발행 시각·JSON 유효성을 검사한다. canonical URL이 없으면 source URL을 사용하고
+URL의 SHA-256 앞 16자리로 `AR` 접두 기사 ID를 만든다. 제목·본문 공백과 언어 대소문자를 정리한다.
+배치 내 후보 선택은 원본의 수집 시각→적재 시각→내용 해시 순서를 유지한다.
+Silver MERGE는 적재 시각이 더 최신일 때만 갱신하며 최초 발행 시각은 유지한다.
+
+Silver는 MERGE 테이블이므로 Gold는 직접 append 스트리밍하지 않고 타이머 trigger에서 미처리 행을 조회한다.
+Gemini 제출 전에 Ops 상태를 저장하며 재시작 시 기존 작업을 확인한다. 쿼터 초과는 지연 후 재시도하고,
+결과가 도착했을 때 Silver 적재 버전이 바뀌었다면 오래된 결과를 저장하지 않는다.
+교차 프로세스에서 변경된 테이블을 읽을 때는 Iceberg 메타데이터를 갱신한다.
+
+Gold는 원본과 동일하게 **`(article_id, ont_version)`별 한 번 저장**한다.
+같은 온톨로지 버전으로 Gold가 이미 있으면 Silver 내용이 변경되어도 다시 분석하지 않는다.
+재분석에는 새 `ONT_VERSION`이 필요하며 버전 변경 전 진행 중인 배치 상태를 확인해야 한다.
+개별 결과의 파싱·참조·SHACL 실패는 Gold에서 제외하며 해당 배치는 완료 처리한다.
+이런 개별 실패의 자동 재처리는 구현하지 않았다. 외부 Batch 전체의 실패·만료·취소는 지연 후 재시도한다.
+
+## 빌드와 배포 준비
+
+저장소 루트에서 기반 Spark 이미지를 먼저 빌드한다. 상세 설정은 [Spark 문서](../spark/README.md)를 따른다.
+
+```sh
+docker build --platform linux/arm64 -f docker/pipelines/Dockerfile --target bronze-to-silver -t finance-platform/article-bronze-to-silver:v1 .
+docker build --platform linux/arm64 -f docker/pipelines/Dockerfile --target silver-to-gold -t finance-platform/article-silver-to-gold:v1 .
+k3d image import finance-platform/article-bronze-to-silver:v1 finance-platform/article-silver-to-gold:v1 --cluster dev
+```
+
+로컬 `configs/platform-images.env`에서 두 IMAGE 참조를 지정한 뒤 새로운 출력 디렉터리로 렌더링한다.
+파일에는 비밀번호를 넣지 않는다. 기존 출력 디렉터리는 renderer가 덮어쓰지 않는다.
+
+```sh
+python3 scripts/render-manifests.py --source deploy/k8s/manifests/pipelines/bronze-to-silver --values configs/platform-images.env --output deploy/rendered-runtime/bronze-to-silver-v1
+python3 scripts/render-manifests.py --source deploy/k8s/manifests/pipelines/silver-to-gold --values configs/platform-images.env --output deploy/rendered-runtime/silver-to-gold-v1
+kubectl --context k3d-dev -n finance-platform apply --dry-run=server -f deploy/rendered-runtime/bronze-to-silver-v1 -f deploy/rendered-runtime/silver-to-gold-v1
+kubectl --context k3d-dev -n finance-platform apply -f deploy/rendered-runtime/bronze-to-silver-v1 -f deploy/rendered-runtime/silver-to-gold-v1
+```
+
+디렉터리 전체를 재귀 apply하지 않는다. 수집 Job과 오프라인 검증 Job은 명시적 `create` 대상이다.
+ConfigMap 변경 후 이미 실행 중인 프로세스에는 재시작이 필요하다. 체크포인트는 재시작 시 같은 경로를 재사용한다.
+이벤트 로그는 `/tmp/spark-events`에 저장되며 Pod 교체 시 사라진다.
+
+## 오프라인 검증
+
+```sh
+docker build --platform linux/arm64 -f docker/pipelines/Dockerfile --target test -t finance-platform/article-pipelines-test:v2 .
+docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 finance-platform/article-pipelines-test:v2
+k3d image import finance-platform/article-pipelines-test:v2 --cluster dev
+kubectl --context k3d-dev -n finance-platform create -f deploy/k8s/manifests/pipelines/offline-smoke-job.yaml
+```
+
+컨테이너 테스트는 원본 Bronze 변환, 환경변수 검증, 결정적 ID, 그래프 참조·SHACL 및 요청 크기 제한을 검사한다.
+Kubernetes 검증은 고유한 `pipeline_smoke_<UUID>` namespace의 테이블과 전용 S3A prefix를 사용한다.
+외부 Batch 서비스만 in-process 클라이언트로 대체하고 실제 Spark·Iceberg·Garage·RDF·SHACL 코드는 실행한다.
+검증 종료 시 소유한 테이블과 파일만 정리한다. 실제 Gemini API 키는 전달하지 않는다.
+결과와 시행착오는 [실행 기록](../runtime/VALIDATION.md)에 남긴다.
+
+## 추후 실제 활성화
+
+현재는 사용자 지시에 따라 실제 Gemini 호출·업무 상시 실행을 하지 않는다.
+활성화할 때는 먼저 키를 안전한 파일로 준비하고, 파일 내용이 실제 API 키만 담도록 한다.
+다음은 이후 운영자가 실행할 예시이며 이번 작업에서는 실행하지 않는다.
+
+```sh
+kubectl --context k3d-dev -n finance-platform create secret generic gemini-credentials --from-file=api-key=/secure/path/gemini-api-key
+# 자원과 입력 데이터·모델·버전을 확인한 뒤 필요한 작업을 하나씩 활성화
+kubectl --context k3d-dev -n finance-platform scale deployment/bronze-to-silver --replicas=1
+# Silver→Gold 활성화는 실제 Gemini 요청과 비용을 발생시킬 수 있음
+kubectl --context k3d-dev -n finance-platform scale deployment/silver-to-gold --replicas=1
+```
+
+Secret이 이미 있으면 위 생성 명령으로 교체하지 말고 별도 키 갱신 절차를 사용한다.
+2 CPU 노드에서 두 작업 동시 실행의 처리량·장기 메모리 사용은 아직 검증하지 않았다.
+수집·Publisher·Airflow DAG 연결은 별도 작업이다.
