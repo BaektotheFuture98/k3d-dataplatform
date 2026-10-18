@@ -1,0 +1,22 @@
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "bronze-to-silver-config",
+    "namespace": "finance-platform",
+    "labels": {
+      "app.kubernetes.io/part-of": "finance-platform",
+      "app.kubernetes.io/component": "pipeline",
+      "app.kubernetes.io/managed-by": "platform-config",
+      "app.kubernetes.io/name": "bronze-to-silver"
+    }
+  },
+  "data": {
+    "BRONZE_TABLE": "lakehouse.bronze.article",
+    "SILVER_TABLE": "lakehouse.silver.article",
+    "CHECKPOINT_URI": "s3a://warehouse/checkpoints/article-bronze-to-silver-v2",
+    "TRIGGER_INTERVAL": "1 minute",
+    "MAX_FILES_PER_MICRO_BATCH": "100",
+    "PIPELINE_RUN_MODE": "stream"
+  }
+}

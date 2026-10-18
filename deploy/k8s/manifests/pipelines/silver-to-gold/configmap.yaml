@@ -1,0 +1,28 @@
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "silver-to-gold-config",
+    "namespace": "finance-platform",
+    "labels": {
+      "app.kubernetes.io/part-of": "finance-platform",
+      "app.kubernetes.io/component": "pipeline",
+      "app.kubernetes.io/managed-by": "platform-config",
+      "app.kubernetes.io/name": "silver-to-gold"
+    }
+  },
+  "data": {
+    "SILVER_TABLE": "lakehouse.silver.article",
+    "GOLD_TABLE": "lakehouse.gold.graph_article",
+    "BATCH_JOB_TABLE": "lakehouse.ops.ontology_batch_job",
+    "CHECKPOINT_URI": "s3a://warehouse/checkpoints/article-silver-to-gold",
+    "TRIGGER_INTERVAL": "1 minute",
+    "PIPELINE_RUN_MODE": "stream",
+    "SEMANTIC_LLM_MODEL": "gemini-3.1-flash-lite",
+    "ONT_VERSION": "v1",
+    "SEMANTIC_BATCH_SIZE": "100",
+    "SEMANTIC_BATCH_MAX_BYTES": "18874368",
+    "SEMANTIC_BATCH_POLL_SECONDS": "300",
+    "SEMANTIC_QUOTA_PAUSE_SECONDS": "3600"
+  }
+}

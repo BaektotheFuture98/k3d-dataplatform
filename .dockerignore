@@ -1,0 +1,10 @@
+.git
+.env
+**/.env*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+configs/platform-images.env
+deploy/rendered*
+**/*.dump
+**/*.backup

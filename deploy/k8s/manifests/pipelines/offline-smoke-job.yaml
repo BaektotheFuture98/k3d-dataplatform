@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: article-pipeline-offline-
+  namespace: finance-platform
+  labels:
+    app.kubernetes.io/name: article-pipeline-offline
+    app.kubernetes.io/part-of: finance-platform
+    app.kubernetes.io/component: validation
+    app.kubernetes.io/managed-by: platform-config
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: article-pipeline-offline
+        app.kubernetes.io/part-of: finance-platform
+        app.kubernetes.io/component: validation
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: validation
+          image: finance-platform/article-pipelines-test:v2
+          imagePullPolicy: IfNotPresent
+          command:
+            - /opt/spark/bin/spark-submit
+            - --master
+            - local[1]
+            - --driver-memory
+            - 768m
+            - /app/validation/article-pipeline-smoke.py
+          env:
+            - name: SPARK_CONF_DIR
+              value: /etc/spark
+            - name: AWS_REGION
+              value: garage
+            - name: AWS_REQUEST_CHECKSUM_CALCULATION
+              value: WHEN_REQUIRED
+            - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+              value: WHEN_REQUIRED
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef: {name: garage-credentials, key: s3-access-key-id}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: {name: garage-credentials, key: s3-secret-access-key}
+          resources:
+            requests: {cpu: 250m, memory: 768Mi}
+            limits: {cpu: "1", memory: 2Gi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 185
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - name: spark-config
+              mountPath: /etc/spark
+              readOnly: true
+      volumes:
+        - name: spark-config
+          configMap: {name: spark-config}

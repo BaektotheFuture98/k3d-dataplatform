@@ -1,0 +1,25 @@
+@prefix ont: <https://finbridge.dev/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ont:Article a owl:Class .
+ont:NewsEvent a owl:Class ;
+    rdfs:subClassOf ont:Event .
+
+ont:articleId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+ont:eventId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+ont:sourceUrl a owl:DatatypeProperty ;
+    rdfs:range xsd:anyURI .
+ont:content a owl:DatatypeProperty ;
+    rdfs:domain ont:Article ;
+    rdfs:range xsd:string .
+ont:createdAt a owl:DatatypeProperty ;
+    rdfs:domain ont:Article ;
+    rdfs:range xsd:dateTime .
+
+ont:mentions a owl:ObjectProperty .
+ont:reports a owl:ObjectProperty .
+ont:affects a owl:ObjectProperty .

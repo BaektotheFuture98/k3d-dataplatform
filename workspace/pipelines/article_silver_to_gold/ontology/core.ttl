@@ -1,0 +1,21 @@
+@prefix ont: <https://finbridge.dev/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ont: a owl:Ontology .
+
+ont:Organization a owl:Class .
+ont:Company a owl:Class ;
+    rdfs:subClassOf ont:Organization .
+ont:Person a owl:Class .
+ont:Industry a owl:Class .
+ont:Product a owl:Class .
+ont:Event a owl:Class .
+
+ont:canonicalId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+ont:name a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+ont:occurredAt a owl:DatatypeProperty ;
+    rdfs:range xsd:dateTime .

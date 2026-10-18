@@ -1,0 +1,84 @@
+@prefix ont: <https://finbridge.dev/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ont:ArticleShape a sh:NodeShape ;
+    sh:targetClass ont:Article ;
+    sh:property [ sh:path ont:articleId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:name ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:sourceUrl ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:content ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path ont:createdAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] ;
+    sh:property [
+        sh:path ont:mentions ;
+        sh:or (
+            [ sh:class ont:Company ]
+            [ sh:class ont:Person ]
+            [ sh:class ont:Product ]
+            [ sh:class ont:Industry ]
+        )
+    ] ;
+    sh:property [ sh:path ont:reports ; sh:class ont:Event ] .
+
+ont:CompanyShape a sh:NodeShape ;
+    sh:targetClass ont:Company ;
+    sh:property [ sh:path ont:canonicalId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:name ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+ont:PersonShape a sh:NodeShape ;
+    sh:targetClass ont:Person ;
+    sh:property [ sh:path ont:canonicalId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:name ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+ont:ProductShape a sh:NodeShape ;
+    sh:targetClass ont:Product ;
+    sh:property [ sh:path ont:canonicalId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:name ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+ont:IndustryShape a sh:NodeShape ;
+    sh:targetClass ont:Industry ;
+    sh:property [ sh:path ont:canonicalId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:name ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+ont:EventShape a sh:NodeShape ;
+    sh:targetClass ont:Event ;
+    sh:property [ sh:path ont:eventId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path ont:name ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [
+        sh:path ont:affects ;
+        sh:or (
+            [ sh:class ont:Company ]
+            [ sh:class ont:Product ]
+            [ sh:class ont:Industry ]
+        )
+    ] .
+
+ont:MentionsRelationshipShape a sh:NodeShape ;
+    sh:targetSubjectsOf ont:mentions ;
+    sh:class ont:Article ;
+    sh:property [
+        sh:path ont:mentions ;
+        sh:or (
+            [ sh:class ont:Company ]
+            [ sh:class ont:Person ]
+            [ sh:class ont:Product ]
+            [ sh:class ont:Industry ]
+        )
+    ] .
+
+ont:ReportsRelationshipShape a sh:NodeShape ;
+    sh:targetSubjectsOf ont:reports ;
+    sh:class ont:Article ;
+    sh:property [ sh:path ont:reports ; sh:class ont:Event ] .
+
+ont:AffectsRelationshipShape a sh:NodeShape ;
+    sh:targetSubjectsOf ont:affects ;
+    sh:class ont:Event ;
+    sh:property [
+        sh:path ont:affects ;
+        sh:or (
+            [ sh:class ont:Company ]
+            [ sh:class ont:Product ]
+            [ sh:class ont:Industry ]
+        )
+    ] .

@@ -7,5 +7,7 @@
 **/*.dump
 **/*.backup
 __pycache__/
+**/.venv/
+**/.pytest_cache/
 deploy/rendered*/
 configs/platform-images.env

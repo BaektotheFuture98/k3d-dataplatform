@@ -37,33 +37,13 @@
         "terminationGracePeriodSeconds": 120,
         "containers": [
           {
-            "name": "base",
+            "name": "pipeline",
             "image": "__SILVER_TO_GOLD_IMAGE__",
             "imagePullPolicy": "IfNotPresent",
             "env": [
               {
-                "name": "AWS_ENDPOINT_URL",
-                "value": "http://garage.finance-platform.svc.cluster.local:3900"
-              },
-              {
                 "name": "AWS_REGION",
                 "value": "garage"
-              },
-              {
-                "name": "S3_PATH_STYLE_ACCESS",
-                "value": "true"
-              },
-              {
-                "name": "S3_SIGNATURE_VERSION",
-                "value": "s3v4"
-              },
-              {
-                "name": "WAREHOUSE_URI",
-                "value": "s3://warehouse/"
-              },
-              {
-                "name": "ICEBERG_CATALOG_URI",
-                "value": "http://iceberg-rest:8181"
               },
               {
                 "name": "AWS_ACCESS_KEY_ID",
@@ -84,12 +64,25 @@
                 }
               },
               {
-                "name": "SPARK_MASTER",
-                "value": "local[2]"
+                "name": "SPARK_CONF_DIR",
+                "value": "/etc/spark"
               },
               {
-                "name": "CHECKPOINT_URI",
-                "value": "s3://warehouse/checkpoints/silver-to-gold/"
+                "name": "AWS_REQUEST_CHECKSUM_CALCULATION",
+                "value": "WHEN_REQUIRED"
+              },
+              {
+                "name": "AWS_RESPONSE_CHECKSUM_VALIDATION",
+                "value": "WHEN_REQUIRED"
+              },
+              {
+                "name": "GOOGLE_API_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "gemini-credentials",
+                    "key": "api-key"
+                  }
+                }
               }
             ],
             "resources": {
@@ -101,6 +94,38 @@
                 "cpu": "1",
                 "memory": "2Gi"
               }
+            },
+            "volumeMounts": [
+              {
+                "name": "spark-config",
+                "mountPath": "/etc/spark",
+                "readOnly": true
+              }
+            ],
+            "envFrom": [
+              {
+                "configMapRef": {
+                  "name": "silver-to-gold-config"
+                }
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 185,
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "spark-config",
+            "configMap": {
+              "name": "spark-config"
             }
           }
         ]
