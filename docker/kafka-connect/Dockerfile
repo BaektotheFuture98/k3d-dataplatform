@@ -1,4 +1,4 @@
-# Build only on a later, explicitly authorized build step.
+# Worker image only. Connector instances are configured separately.
 FROM quay.io/strimzi/kafka:0.51.0-kafka-4.2.0
 USER root:root
 # Official self-contained Apache Kafka connector (not Confluent ZIP).

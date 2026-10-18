@@ -26,8 +26,8 @@ metadata:
     app.kubernetes.io/component: compute
     app.kubernetes.io/managed-by: platform-config
 spec:
-  # On-demand notebook; reserve the two-core node for platform services.
-  replicas: 0
+  # Infrastructure-only notebook; article pipelines remain undeployed.
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -57,6 +57,10 @@ spec:
             - name: http
               containerPort: 8888
           env:
+            - name: AWS_REQUEST_CHECKSUM_CALCULATION
+              value: WHEN_REQUIRED
+            - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+              value: WHEN_REQUIRED
             - name: SPARK_CONF_DIR
               value: /etc/spark
             - name: AWS_REGION
@@ -90,7 +94,7 @@ spec:
             periodSeconds: 20
           resources:
             requests:
-              cpu: 250m
+              cpu: 100m
               memory: 1Gi
             limits:
               cpu: "2"

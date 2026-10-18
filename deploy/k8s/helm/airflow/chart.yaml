@@ -1,0 +1,6 @@
+repository: https://airflow.apache.org
+chart: airflow
+version: 1.18.0
+release: airflow
+namespace: finance-platform
+appVersion: 3.0.2

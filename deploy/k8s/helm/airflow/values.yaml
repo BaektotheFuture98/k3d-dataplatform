@@ -1,5 +1,6 @@
 # Official apache-airflow/airflow chart 1.18.0; namespace finance-platform.
-# Repository/tag are derived from the user supplied full AIRFLOW_IMAGE.
+# Infrastructure-only image; contains no project DAGs.
+# Repository/tag are derived from the selected AIRFLOW_IMAGE.
 airflowVersion: '3.0.2'
 defaultAirflowRepository: __AIRFLOW_REPOSITORY__
 defaultAirflowTag: '__AIRFLOW_TAG__'
@@ -35,14 +36,8 @@ data:
   metadataSecretName: airflow-metadata
 scheduler:
   replicas: 1
-  env:
-    - name: ARTICLE_COLLECTOR_IMAGE
-      value: __ARTICLE_COLLECTOR_IMAGE__
-  serviceAccount:
-    create: false
-    name: airflow-jobs
   resources:
-    requests: {cpu: 250m, memory: 512Mi}
+    requests: {cpu: 150m, memory: 512Mi}
     limits: {cpu: '1', memory: 2Gi}
   logGroomerSidecar:
     enabled: false
@@ -71,6 +66,12 @@ createUserJob:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: 500m, memory: 512Mi}
 config:
+  api:
+    # Four default API workers used ~936Mi in a 1Gi Pod on this dev node.
+    workers: '1'
+  database:
+    sql_alchemy_pool_size: '3'
+    sql_alchemy_max_overflow: '2'
   core:
     auth_manager: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     load_examples: 'False'
