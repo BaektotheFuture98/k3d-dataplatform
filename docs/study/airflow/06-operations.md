@@ -1,4 +1,8 @@
-# Airflow 6: 설치·재배포·로그·복구
+# Airflow 설치·재배포·복구: 참고 자료
+
+> **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
+> 관련 본문: [16장](../chapters/16-helm-and-changes.md) · [17장](../chapters/17-failure-and-recovery.md) · [21장](../chapters/21-airflow-operations.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
+> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
 ## 학습 목표
 
@@ -10,7 +14,7 @@
 없고 다운로드도 불가해 ConfigMap과 Deployment를 kubectl로 변경했다.
 **실행 중인 executor는 KubernetesExecutor지만 Helm release 기록은 이전
 LocalExecutor 설정이다.** Headlamp도 같은 종류의 차이가 있다.
-이 문서 PR은 실행 설정을 바꾸거나 Helm 기록을 몰래 수정하지 않는다.
+이 참고 문서의 조회·예시와 실제 변경 실행을 구분한다.
 
 ## 이미지부터 실행까지
 

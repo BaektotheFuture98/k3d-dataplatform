@@ -1,4 +1,8 @@
-# Kubernetes 4: 상태·이벤트·로그로 진단하기
+# Kubernetes 참고: 상태·이벤트·로그로 진단하기
+
+> **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
+> 관련 본문: [15장](../chapters/15-observing-and-debugging.md) · [17장](../chapters/17-failure-and-recovery.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
+> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
 ## 학습 목표
 
@@ -6,9 +10,12 @@
 
 ## 기본 순서
 
+Pod 목록에서 실제 이름을 확인하고 아래 `실제-Pod-이름`을 바꿔 넣는다.
+
 ```sh
 kubectl --context k3d-dev -n finance-platform get pods
-kubectl --context k3d-dev -n finance-platform describe pod <POD_NAME>
+POD_NAME=실제-Pod-이름
+kubectl --context k3d-dev -n finance-platform describe pod "$POD_NAME"
 kubectl --context k3d-dev -n finance-platform get events --sort-by=.lastTimestamp
 ```
 

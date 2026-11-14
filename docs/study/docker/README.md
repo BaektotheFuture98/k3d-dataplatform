@@ -1,5 +1,9 @@
 # Docker: 이미지와 k3d 노드 컨테이너
 
+> **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
+> 관련 본문: [2장](../chapters/02-process-container-vm.md) · [3장](../chapters/03-colima-docker.md) · [10장](../chapters/10-images-and-resources.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
+> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
+
 ## 학습 목표
 
 이미지 빌드, 컨테이너 실행, Kubernetes에 이미지 전달하는 과정을 구분한다.

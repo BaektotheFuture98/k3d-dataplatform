@@ -1,4 +1,8 @@
-# Airflow 1: 세 개의 상주 Pod와 임시 worker
+# Airflow 구조: 설정 참고 자료
+
+> **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
+> 관련 본문: [18장](../chapters/18-airflow-concepts.md) · [20장](../chapters/20-airflow-on-kubernetes.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
+> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
 ## 학습 목표
 
@@ -54,8 +58,7 @@ Airflow 3에서는 태스크가 Execution API를 사용한다는 점이 중요�
 - `docker/airflow/Dockerfile`: Airflow/provider 이미지.
 - ConfigMap `airflow-config`: 실제 컨테이너의 설정과 Pod template.
 
-파일은 현재 작업 디렉터리를 기준으로 한다. 이 학습 PR은 문서만 포함하므로
-GitHub main에 아직 없는 로컬 변경은 현재 실행 설정과 대조해야 한다.
+파일은 프로젝트 루트를 기준으로 한다. 저장소 선언과 실제 실행 설정은 대조해서 읽는다.
 
 ## 조회 실습
 
@@ -75,6 +78,6 @@ kubectl --context k3d-dev -n finance-platform exec deployment/airflow-scheduler 
 **해설:** 전자는 DAG 파일의 구조를 해석하고, 후자는 실행할 태스크를 배정한다.
 성공 여부는 Airflow UI/메타데이터 DB에 남으며 현재 로그는 공유 PVC에 보존된다.
 
-다음: [설정값](02-configuration.md), [KubernetesExecutor](03-kubernetes-executor.md),
+다른 참고 자료: [설정값](02-configuration.md), [KubernetesExecutor](03-kubernetes-executor.md),
 [DAG 실습](04-dags-and-practice.md), [Triggerer](05-triggerer.md),
 [운영·복구](06-operations.md).

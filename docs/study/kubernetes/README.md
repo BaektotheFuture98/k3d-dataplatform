@@ -1,4 +1,8 @@
-# Kubernetes 1: 지금 떠 있는 Pod 이해하기
+# Kubernetes 참고: 지금 떠 있는 Pod 이해하기
+
+> **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
+> 관련 본문: [7장](../chapters/07-declaration-to-pod.md) · [8장](../chapters/08-pod-lifecycle.md) · [9장](../chapters/09-workload-controllers.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
+> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
 ## 학습 목표
 
@@ -65,5 +69,5 @@ Deployment → ReplicaSet → Pod 순서와 StatefulSet → Pod 순서를 찾아
 **해설:** 컨트롤러가 원하는 개수를 복구한다. 현재 executor는 성공한 worker를
 삭제하며 실행 상태는 Airflow 메타데이터 DB, 로그는 PVC에 남긴다.
 
-다음: [네트워크](02-networking.md), [저장소·권한](03-storage-and-security.md),
+다른 참고 자료: [네트워크](02-networking.md), [저장소·권한](03-storage-and-security.md),
 [장애 진단](04-troubleshooting.md).

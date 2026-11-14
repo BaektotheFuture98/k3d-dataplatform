@@ -1,4 +1,8 @@
-# Airflow 4: DAG를 올리고 한 번만 실행해 보기
+# 인프라 검증용 DAG: 실습 참고 자료
+
+> **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
+> 관련 본문: [19장](../chapters/19-first-dag.md) · [21장](../chapters/21-airflow-operations.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
+> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
 ## 학습 목표
 
@@ -14,8 +18,8 @@ Git sync는 현재 꺼져 있다. 파일을 로컬에서 만들었다고 자동 
 검증용 원본은 `configs/airflow/kubernetes-executor-smoke.py`다.
 현재 DAG ID는 `airflow_kubernetes_executor_smoke`, task는 `verify_worker`,
 `schedule=None`, `catchup=False`, 최초 paused, task retry=0이다.
-이 학습 문서 PR이 검증 코드 원본까지 게시하는 것은 아니므로 실습 전 로컬에
-해당 파일이 존재하는지 확인한다. 아래 명령은 설정된 smoke DAG가 있는 현재 환경용이다.
+실습 전 원본 파일의 존재를 확인한다. 아래 절차는 공유 DAG PVC와 smoke DAG를
+준비한 환경용이다. 현재 등록 상태는 조회해 확인한다.
 
 파일이 없는 새 학습 환경에서는 다음 코드를 로컬의
 `configs/airflow/kubernetes-executor-smoke.py`로 저장할 수 있다.
