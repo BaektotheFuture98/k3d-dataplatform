@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: headlamp-basic-auth
+  namespace: dev
+  labels:
+    app.kubernetes.io/name: headlamp
+    app.kubernetes.io/component: authentication
+    app.kubernetes.io/part-of: finance-platform
+    app.kubernetes.io/managed-by: platform-config
+spec:
+  basicAuth:
+    secret: headlamp-basic-auth
+    realm: Headlamp
+    removeHeader: true

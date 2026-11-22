@@ -1,0 +1,38 @@
+# Official Headlamp chart 0.46.0; image and chart are pinned together.
+fullnameOverride: headlamp
+replicaCount: 1
+image:
+  tag: "v0.46.0"
+config:
+  inCluster: true
+  inClusterContextName: k3d-dev
+  # Every ingress request is authenticated by the BasicAuth middleware below.
+  unsafeUseServiceAccountToken: true
+  enableHelm: false
+clusterRoleBinding:
+  create: false
+serviceAccount:
+  create: false
+  name: headlamp-user
+automountServiceAccountToken: true
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+persistentVolumeClaim:
+  enabled: false
+pluginsManager:
+  enabled: false
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: dev-headlamp-basic-auth@kubernetescrd
+  hosts:
+    - host: headlamp.tail481f72.ts.net
+      paths:
+        - path: /
+          type: Prefix

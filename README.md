@@ -137,11 +137,16 @@ Tailscale에 연결한 기기에서는 다음 HTTPS 주소를 사용한다. 기�
 | --- | --- |
 | Airflow | <https://seonmin-mac-mini.tail481f72.ts.net> |
 | JupyterLab | <https://seonmin-mac-mini.tail481f72.ts.net:8443> |
+| Headlamp | <https://headlamp.tail481f72.ts.net> (호스트 승인·접근 정책 반영, HTTPS 응답 검증) |
 
 2026-10-19 서버 자체에서 Tailscale IP로 TLS·HTTP 응답을 검증했다. MacBook 원격 접속은
 사용자가 TCP 443·8443 접근 정책을 추가했고 서버 수신 규칙에 반영된 것을 확인했다.
 MacBook 브라우저 접속 확인은 남아 있다. 호스트 Mac의 DNS 보정과
 재적용 방법은 [접속 설정](configs/ingress/README.md)에 정리했다.
+
+Kubernetes 관리 화면 Headlamp 0.46.0은 `dev`에 배포한다. 기존 `admin` 계정으로
+로그인하면 `dev`·`stage`·`prod`를 조회할 수 있으며, 수정 권한은 `dev`에만 있다.
+설정과 복구 방법은 [Headlamp 안내](configs/headlamp/README.md)에 있다.
 
 아래 명령은 저장소 루트에서 실행한다.
 

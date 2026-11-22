@@ -10,7 +10,7 @@
 
 ## 현재 구성
 
-Headlamp 0.46.0을 `finance-platform`의 Deployment 1개로 실행한다.
+Headlamp 0.46.0을 `dev`의 Deployment 1개로 실행한다.
 Service는 80번, 실제 앱은 4466번 포트다. DB나 별도 PVC는 사용하지 않는다.
 화면에 Headlamp 자신의 Pod가 나타나는 것이 정상이다.
 
@@ -45,17 +45,17 @@ Traefik이 비밀번호를 확인하고 Headlamp가 Pod의 자동 갱신 Service
 ## 권한
 
 `headlamp-user`는 전역 view 계열 조회와 node/namespace/PV/metrics 읽기,
-`finance-platform` edit 권한을 가진다. 이 namespace의 edit는 Secret 접근과
-워크로드 변경을 포함한다. 브라우저에서 로그인했다고 무조건 전체 cluster-admin인
-것은 아니며, 모든 방문자는 현재 같은 신원의 권한을 공유한다.
+`dev`의 edit 권한을 가진다. 이 권한은 `dev`의 Secret 접근과 워크로드 변경을
+포함한다. `stage`와 `prod`에서는 조회 권한만 있다. 모든 방문자는 같은 신원의
+권한을 공유한다.
 
 ## 설정 확인 실습
 
 ```sh
-kubectl --context k3d-dev -n finance-platform get deployment headlamp
-kubectl --context k3d-dev -n finance-platform get ingress headlamp
-kubectl --context k3d-dev -n finance-platform get middleware headlamp-basic-auth
-kubectl --context k3d-dev -n finance-platform get serviceaccount headlamp-user
+kubectl --context k3d-dev -n dev get deployment headlamp
+kubectl --context k3d-dev -n dev get ingress headlamp
+kubectl --context k3d-dev -n dev get middleware headlamp-basic-auth
+kubectl --context k3d-dev -n dev get serviceaccount headlamp-user
 ```
 
 비밀번호 값과 hash를 학습 노트에 복사하지 않는다. 변경할 때는 로컬의 제한된
@@ -64,9 +64,10 @@ kubectl --context k3d-dev -n finance-platform get serviceaccount headlamp-user
 
 ## 현재 검증 범위
 
-Ingress 경로에서 미인증·오답은 401, 올바른 인증은 UI와 Kubernetes PodList API
-모두 200이었다. 새 Pod는 Ready 1/1이다. 브라우저 원격 접속의 전체 경로는
-클라이언트에서 별도 확인해야 한다.
+`dev`의 Headlamp Pod는 Ready 1/1이다. 서비스 API에서 각 환경과 전체
+네임스페이스의 PodList 응답을 확인했다. Tailscale 서비스 VIP에 HTTPS로 접속하면
+미인증·잘못된 인증 요청에 401이 반환된다. 원격 클라이언트의 DNS 및 브라우저
+로그인은 별도 확인이 필요하다.
 
 ## 확인 문제
 
