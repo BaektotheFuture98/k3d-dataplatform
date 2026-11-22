@@ -11,6 +11,16 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
+    - host: seonmin-mac-mini.tail481f72.ts.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: airflow-api-server
+                port:
+                  number: 8080
     - host: jupyter.localhost
       http:
         paths:

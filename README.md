@@ -131,6 +131,18 @@ PVC 또는 클러스터·Colima VM 삭제 시 데이터가 소실될 수 있다.
 
 ## 상태 확인과 접속
 
+Tailscale에 연결한 기기에서는 다음 HTTPS 주소를 사용한다. 기존 로그인 인증을 유지한다.
+
+| UI | Tailnet 접속 주소 |
+| --- | --- |
+| Airflow | <https://seonmin-mac-mini.tail481f72.ts.net> |
+| JupyterLab | <https://seonmin-mac-mini.tail481f72.ts.net:8443> |
+
+2026-10-19 서버 자체에서 Tailscale IP로 TLS·HTTP 응답을 검증했다. MacBook 원격 접속은
+사용자가 TCP 443·8443 접근 정책을 추가했고 서버 수신 규칙에 반영된 것을 확인했다.
+MacBook 브라우저 접속 확인은 남아 있다. 호스트 Mac의 DNS 보정과
+재적용 방법은 [접속 설정](configs/ingress/README.md)에 정리했다.
+
 아래 명령은 저장소 루트에서 실행한다.
 
 ```sh

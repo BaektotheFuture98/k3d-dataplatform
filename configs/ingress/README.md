@@ -1,5 +1,67 @@
 # Mac에서 Jupyter와 Airflow 접속
 
+## Tailscale 접속
+
+2026-10-19 Tailscale Serve를 다음과 같이 연결했다. 접속 기기는 같은 Tailnet에 연결되어
+있어야 하며 기존 Airflow 로그인과 Jupyter 토큰 인증을 사용한다.
+
+| 서비스 | HTTPS 주소 |
+| --- | --- |
+| Airflow | <https://seonmin-mac-mini.tail481f72.ts.net> |
+| Jupyter | <https://seonmin-mac-mini.tail481f72.ts.net:8443> |
+
+2026-10-19 최초 수신 PacketFilter 확인 결과,
+MacBook `100.70.20.73`에는 기존 Service VIP의 지정 포트만 허용되며
+Mac Mini `100.80.212.1`의 TCP 443·8443 허용 규칙이 없다. 따라서 서버 자체의
+HTTPS 검사 성공은 MacBook에서의 접속 성공을 의미하지 않는다.
+
+[Tailscale Access controls](https://login.tailscale.com/admin/acls)의 기존 `grants` 배열에
+`tailscale-web-grant.json`의 객체를 추가한다. 기존 정책 전체를 이 객체로 교체하지 않는다.
+이는 해당 MacBook에서 Mac Mini의 두 웹 포트로의 접속만 허용하는 규칙이다.
+사용자가 정책을 저장한 뒤 수신 PacketFilter에서 MacBook `100.70.20.73` →
+Mac Mini `100.80.212.1`의 TCP 443·8443 허용 반영을 확인했다.
+서버에서 두 HTTPS 주소는 HTTP 200이며, MacBook 브라우저에서의 접속은 사용자 확인이 필요하다.
+
+```text
+Tailnet → Mac Tailscale Serve :443 / :8443
+  → 127.0.0.1:8080 → Traefik → Airflow / Jupyter
+```
+
+Airflow는 Ingress의 Tailnet 호스트 규칙을 사용한다. Jupyter는 `tailscale-jupyter`
+IngressRoute가 Serve의 `X-Forwarded-Host`에 포함된 `:8443`을 구분해 전달한다.
+Serve는 백그라운드 설정으로 저장되며 Tailscale 데몬이 실행 중이어야 한다.
+
+```sh
+kubectl --context k3d-dev -n finance-platform apply --dry-run=server -f deploy/k8s/manifests/ingress/platform-ui.yaml -f deploy/k8s/manifests/ingress/tailscale-jupyter.yaml
+kubectl --context k3d-dev -n finance-platform apply -f deploy/k8s/manifests/ingress/platform-ui.yaml -f deploy/k8s/manifests/ingress/tailscale-jupyter.yaml
+tailscale serve --bg --https=443 http://127.0.0.1:8080
+tailscale serve --bg --https=8443 http://127.0.0.1:8080
+tailscale serve status
+```
+
+두 서비스는 Tailscale IP `100.80.212.1`에 `curl --resolve`로 연결해 TLS 인증서 검증과
+HTTP 200 및 페이지 제목을 확인했다. 다른 Tailnet 기기에서의 브라우저 로그인·커널
+WebSocket 동작은 별도 검증이 필요하다. 기존 `svc:jupyter` 별칭은 DNS 조회가
+NXDOMAIN을 반환해 이번 접속 주소로 사용하지 않았다.
+
+호스트 Mac은 Tailscale 내부 DNS 조회에는 성공하지만 macOS resolver에 Tailnet용
+nameserver가 없어 일반 이름 해석은 실패했다. 필요하면 관리자 권한으로 해당 도메인에만
+DNS resolver를 지정한다. 이 변경은 아직 적용하지 않았다.
+
+```sh
+printf 'nameserver 100.100.100.100\n' | sudo tee /etc/resolver/tail481f72.ts.net
+```
+
+이번에 추가한 Serve 포트만 끄려면 아래 명령을 사용한다. 기존 서비스 설정도 지워지는
+`tailscale serve reset`은 사용하지 않는다.
+
+```sh
+tailscale serve --https=443 off
+tailscale serve --https=8443 off
+```
+
+## 로컬 접속
+
 기존 k3d `dev` 클러스터의 Traefik을 사용한다. 애플리케이션 Service는 ClusterIP를 유지하고,
 `finance-platform/platform-ui` Ingress가 호스트 이름에 따라 요청을 전달한다.
 
