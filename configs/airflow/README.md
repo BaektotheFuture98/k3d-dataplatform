@@ -1,5 +1,10 @@
 # Airflow 파일 계약
 
+**현재 executor는 KubernetesExecutor다.** 2026-11-13 전환했고, 별도 worker Pod에서
+검증 태스크 성공 및 Pod 삭제 후 로그 보존까지 확인했다.
+DAG/log 공유 PVC, namespace RBAC, Helm 재적용·복구 방법은
+[KubernetesExecutor 전환](KUBERNETES-EXECUTOR.md)에 있다.
+
 2026-10-18 기반 서비스 전용 이미지를 빌드·반입·설치했다. API/scheduler/dag-processor Ready, FAB 로그인·인증된 API 및 DAG 0개를 확인했다. 업무 DAG와 Job 실행은 제외했다. [실행 검증](../runtime/VALIDATION.md)을 참조한다. 공식 Helm chart **1.18.0**, Airflow **3.0.2**, `apache-airflow-providers-cncf-kubernetes==10.24.0`을 고정한다. Provider의 최소 Airflow 요구는 2.11.0이므로 3.0.2는 범위에 포함된다. 이미지 dependency resolution/pip check, KJO import와 chart 렌더링은 통과했다. 업무 DAG import/실행은 제외했다.
 
 - [고정 chart values 원본](https://github.com/apache/airflow/blob/helm-chart/1.18.0/chart/values.yaml)
@@ -9,17 +14,18 @@
 
 `AIRFLOW_IMAGE`는 tag를 포함하는 전체 이미지 참조이며 renderer가 repository/tag로 나눈다.
 현재 `docker/airflow/Dockerfile`은 Airflow/provider만 포함하며 업무 DAG/Job template을 복사하지 않는다.
-Git sync/PVC 전달도 비활성화했다. 나중에 pipeline을 연결할 때 DAG를 `/opt/airflow/dags/`,
+Git sync는 비활성화했고 DAG/log PVC는 KubernetesExecutor 전환 때 연결했다.
+나중에 pipeline을 연결할 때 DAG를 `/opt/airflow/dags/`,
 Job template을 `/opt/airflow/job-templates/article-collector.yaml`에 전달하는 절차를 추가해야 한다.
 chart values만으로 로컬 파일이 전송되지 않는다.
 
-LocalExecutor는 scheduler 안에서 task를 실행한다. 외부 PostgreSQL은 `postgres:5432`, DB `airflow_meta`, user `airflow_user`. 사전에 외부 Secret `airflow-metadata`의 **connection** 키에 URL-encoded password를 포함한 `postgresql://airflow_user:<encoded-password>@postgres:5432/airflow_meta` 연결 URL을 준비해야 한다. 비밀번호 원천은 `postgres-credentials/airflow-password`이며 Kubernetes가 서로 다른 Secret 키를 자동 조합하지 않는다. 실제 Secret 값이나 생성 명령은 여기에 넣지 않는다.
+초기 LocalExecutor는 scheduler 안에서 task를 실행했으며 현재는 task별 worker Pod를 실행한다. 외부 PostgreSQL은 `postgres:5432`, DB `airflow_meta`, user `airflow_user`. 사전에 외부 Secret `airflow-metadata`의 **connection** 키에 URL-encoded password를 포함한 `postgresql://airflow_user:<encoded-password>@postgres:5432/airflow_meta` 연결 URL을 준비해야 한다. 비밀번호 원천은 `postgres-credentials/airflow-password`이며 Kubernetes가 서로 다른 Secret 키를 자동 조합하지 않는다. 실제 Secret 값이나 생성 명령은 여기에 넣지 않는다.
 
 Chart 1.18.0 설치와 DB migration hook이 성공했다. 차트 기본 테스트 계정 생성은 끈다.
 `configs/runtime/provision-airflow-admin.py`로 누락된 Admin을 생성하고 `airflow-admin` Secret에
 자격증명을 보관했다. 기존 Secret/사용자는 재사용하며 비밀번호를 회전하거나 출력하지 않는다.
 chart가 생성한 Fernet/JWT/API Secret을 유지한다. 운영용 Secret 전환 시 `fernetKeySecretName`,
-`jwtSecretName`, `apiSecretKeySecretName`을 검토한다. 로그는 현재 ephemeral이다.
+`jwtSecretName`, `apiSecretKeySecretName`을 검토한다. 현재 로그는 공유 PVC에 보존한다.
 
 `deploy/k8s/manifests/pipelines/airflow-rbac.yaml`은 scheduler의 `airflow-jobs` SA에 namespace 내 Jobs 생성/조회/삭제/patch, Pods 조회/삭제/patch 및 log 읽기만 허용한다. ClusterRole/Secret 읽기 권한은 없다. KJO는 Job을 생성한 후 완료를 기다린다. `keep_pod`로 완료 로그를 남기고 Job TTL 24시간이 Job/Pod를 정리한다. 취소 시 Foreground 삭제가 종속 Pod를 정리한다. 다른 워크로드 Pod를 이름별로 제한할 수 없는 list 권한 한계가 있으므로 이 namespace는 신뢰 경계다.
 

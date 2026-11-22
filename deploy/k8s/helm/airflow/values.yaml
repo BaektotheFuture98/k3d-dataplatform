@@ -4,7 +4,7 @@
 airflowVersion: '3.0.2'
 defaultAirflowRepository: __AIRFLOW_REPOSITORY__
 defaultAirflowTag: '__AIRFLOW_TAG__'
-executor: LocalExecutor
+executor: KubernetesExecutor
 labels:
   app.kubernetes.io/part-of: finance-platform
   app.kubernetes.io/name: airflow
@@ -24,13 +24,21 @@ triggerer:
   enabled: false
 workers:
   replicas: 0
+  serviceAccount:
+    create: false
+    name: airflow-executor-worker
+    automountServiceAccountToken: false
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: '1', memory: 1Gi}
   persistence:
     enabled: false
   logGroomerSidecar:
     enabled: false
 rbac:
+  # Namespace-only permissions are in executor-resources.yaml.
   create: false
-allowPodLaunching: false
+allowPodLaunching: true
 multiNamespaceMode: false
 data:
   metadataSecretName: airflow-metadata
@@ -77,11 +85,81 @@ config:
     load_examples: 'False'
     dags_are_paused_at_creation: 'True'
     parallelism: 2
+    execution_api_server_url: http://airflow-api-server:8080/execution/
+  kubernetes_executor:
+    namespace: finance-platform
+    in_cluster: 'True'
+    multi_namespace_mode: 'False'
+    delete_worker_pods: 'True'
+    delete_worker_pods_on_failure: 'False'
+    pod_template_file: /opt/airflow/pod_templates/pod_template_file.yaml
 dags:
   persistence:
-    enabled: false
+    enabled: true
+    existingClaim: airflow-executor-dags
   gitSync:
     enabled: false
 logs:
   persistence:
-    enabled: false
+    enabled: true
+    existingClaim: airflow-executor-logs
+
+# Explicit template also makes the kubectl transition reproducible without Helm.
+# Airflow requires the first container to be named base and have an image.
+podTemplate: |-
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: airflow-worker-placeholder
+    labels:
+      component: worker
+      release: airflow
+      tier: airflow
+      app.kubernetes.io/name: airflow
+      app.kubernetes.io/component: orchestration
+      app.kubernetes.io/part-of: finance-platform
+  spec:
+    restartPolicy: Never
+    serviceAccountName: airflow-executor-worker
+    automountServiceAccountToken: false
+    securityContext:
+      runAsUser: 50000
+      fsGroup: 0
+    containers:
+      - name: base
+        image: '{{ .Values.defaultAirflowRepository }}:{{ .Values.defaultAirflowTag }}'
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: '1', memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+        env:
+          - {name: AIRFLOW_HOME, value: /opt/airflow}
+          - {name: AIRFLOW__CORE__EXECUTOR, value: KubernetesExecutor}
+          - name: AIRFLOW__CORE__FERNET_KEY
+            valueFrom:
+              secretKeyRef: {name: airflow-fernet-key, key: fernet-key}
+          - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+            valueFrom:
+              secretKeyRef: {name: airflow-metadata, key: connection}
+          - name: AIRFLOW__API__SECRET_KEY
+            valueFrom:
+              secretKeyRef: {name: airflow-api-secret-key, key: api-secret-key}
+          - name: AIRFLOW__API_AUTH__JWT_SECRET
+            valueFrom:
+              secretKeyRef: {name: airflow-jwt-secret, key: jwt-secret}
+        volumeMounts:
+          - {name: config, mountPath: /opt/airflow/airflow.cfg, subPath: airflow.cfg, readOnly: true}
+          - {name: config, mountPath: /opt/airflow/config/airflow_local_settings.py, subPath: airflow_local_settings.py, readOnly: true}
+          - {name: dags, mountPath: /opt/airflow/dags, readOnly: true}
+          - {name: logs, mountPath: /opt/airflow/logs}
+    volumes:
+      - name: config
+        configMap: {name: airflow-config}
+      - name: dags
+        persistentVolumeClaim: {claimName: airflow-executor-dags, readOnly: true}
+      - name: logs
+        persistentVolumeClaim: {claimName: airflow-executor-logs}

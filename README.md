@@ -16,7 +16,7 @@ Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 | Garage | 2.4.1 | S3 호환 객체 저장소, `warehouse` 버킷 | Ready |
 | Iceberg REST | 1.11.0 | PostgreSQL JDBC 기반 카탈로그 API | Ready |
 | Spark / JupyterLab | 4.1.2 / 4.4.9 | 데이터 처리와 노트북 개발 | Jupyter Ready, Spark Local 실행 검증 |
-| Airflow | 3.0.2, chart 1.18.0 | 작업 스케줄링과 오케스트레이션 | API·Scheduler·DAG Processor Ready, DAG 0개 |
+| Airflow | 3.0.2, chart 1.18.0 | 작업 스케줄링과 오케스트레이션 | KubernetesExecutor, 검증 DAG 성공·일시정지 |
 | Neo4j Community | 5.26.32 | 기사·이벤트 그래프 저장 | Ready, 인증·합성 데이터 쿼리 검증 |
 | Strimzi / Kafka | 0.51.0 / 4.2.0 예정 | 이벤트 브로커 관리와 메시지 전달 | 미설치, 클러스터 리소스 승인 대기 |
 | Kafka Connect | Kafka 4.2.0, Neo4j 플러그인 5.1.16 예정 | Kafka 이벤트를 Neo4j에 반영 | 이미지 빌드·k3d 반입 완료, 미기동 |
@@ -44,7 +44,9 @@ Neo4j: 독립 실행 중, 기사 데이터 적재는 아직 연결하지 않음
 Iceberg는 테이블 포맷이다. 데이터 파일과 Iceberg 메타데이터 JSON은 Garage에 저장하고,
 테이블의 메타데이터 위치 등 JDBC 카탈로그 정보는 PostgreSQL에 저장한다.
 Spark는 Jupyter 환경에서 `local[2]`로 실행하며, 별도 Spark 클러스터는 구성하지 않았다.
-Airflow는 LocalExecutor를 사용한다.
+Airflow는 KubernetesExecutor를 사용하며 태스크마다 별도 worker Pod를 생성한다.
+2026-11-13 검증 태스크 성공·Pod 자동 정리·로그 PVC 보존을 확인했다.
+[전환 및 재배포 안내](configs/airflow/KUBERNETES-EXECUTOR.md)를 참조한다.
 
 Spark 공통 설정은 ConfigMap의 `/etc/spark`에서 읽는다. 원본 프로젝트 기준으로
 Garage용 Hadoop S3A 체크포인트·로그 설정을 반영한 이미지를 Jupyter에 적용했다.
@@ -125,7 +127,7 @@ Jupyter의 [테이블 구성 노트북](http://jupyter.localhost:8080/lab/tree/n
 단일 노드 개발 환경으로 고가용성을 제공하지 않는다.
 `local-path`의 요청 용량은 실제 디스크 quota를 보장하지 않으며,
 PVC 또는 클러스터·Colima VM 삭제 시 데이터가 소실될 수 있다.
-백업·복원 테스트는 아직 수행하지 않았다. Airflow 로그는 현재 ephemeral이다.
+백업·복원 테스트는 아직 수행하지 않았다. Airflow 로그는 공유 PVC에 보존한다.
 
 ## 상태 확인과 접속
 
@@ -183,7 +185,7 @@ DB와 S3 인증은 각각 `postgres-credentials`, `garage-credentials`를 사용
 - Garage: S3 객체 입출력, multipart, 익명 접근 차단, 재시작 후 객체 보존.
 - Spark / Iceberg: 합성 테이블 쓰기·읽기, JDBC 카탈로그 등록, Catalog 재시작 후 새 Spark 세션에서 재조회와 테스트 테이블 정리. 후속 Article 테이블 4개 생성·스키마 검증과 노트북 재실행.
 - Jupyter: 올바른 토큰과 잘못된 토큰에 대한 HTTP 인증 동작.
-- Airflow: 서비스 health, 관리자 로그인, 인증된 DAG API 응답과 DAG 0개.
+- Airflow: 서비스 health, 관리자 로그인, 인증된 DAG API 응답. KubernetesExecutor 전환 후 검증 DAG의 worker Pod 실행·성공·자동 삭제와 로그 보존.
 - Neo4j: 내부 Bolt 인증과 합성 노드 생성·조회·삭제.
 - 기사 파이프라인: 네트워크 없는 이미지 테스트 13개, 설정 도구 테스트 12개. 격리된 Iceberg 테이블과 S3A 체크포인트로 정제·재시작·재처리·Gold 검증·쿼터 복구·오래된 응답 배제를 확인했다. Gemini 전송 계층만 대체했고 실제 API는 호출하지 않았다.
 
