@@ -112,7 +112,7 @@ Jupyter의 [테이블 구성 노트북](http://jupyter.localhost:8080/lab/tree/n
 | 클러스터 / kubectl context | `dev` / `k3d-dev` |
 | 노드 | `k3d-dev-server-0` 단일 노드, ARM64 |
 | Kubernetes | K3s `v1.35.5+k3s1` |
-| 노드 자원 | CPU 2개, 메모리 약 7.7GiB |
+| 노드 자원 | CPU 2개, 메모리 약 23.4GiB (2026-10-19 Colima 24GiB로 증설) |
 | Namespace | `finance-platform` |
 | StorageClass | `local-path`, RWO |
 | 네트워크 | 내부 ClusterIP Service, UI는 Traefik Ingress와 Mac 루프백 포트로 접속 |
