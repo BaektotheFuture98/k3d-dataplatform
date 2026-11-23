@@ -1,0 +1,26 @@
+global:
+  logging:
+    format: json
+
+dex:
+  enabled: false
+notifications:
+  enabled: false
+
+server:
+  ingress:
+    enabled: false
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+
+controller:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+
+repoServer:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+
+redis:
+  resources:
+    requests: {cpu: 25m, memory: 64Mi}

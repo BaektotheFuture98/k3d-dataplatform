@@ -148,6 +148,9 @@ Kubernetes 관리 화면 Headlamp 0.46.0은 `dev`에 배포한다. 기존 `admin
 로그인하면 `dev`·`stage`·`prod`를 조회할 수 있으며, 수정 권한은 `dev`에만 있다.
 설정과 복구 방법은 [Headlamp 안내](configs/headlamp/README.md)에 있다.
 
+CI/CD 도구는 `jenkins`와 `argocd` 네임스페이스에 각각 설치한다. Jenkins의 검증
+파이프라인과 Argo CD의 환경별 배포 설정은 [CI/CD 운영 안내](deploy/gitops/README.md)에 있다.
+
 아래 명령은 저장소 루트에서 실행한다.
 
 ```sh
