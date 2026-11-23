@@ -4,11 +4,14 @@
 > 관련 본문: [23장](../chapters/23-data-processing.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
 > 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
+2026-11-24 기준 Spark 실습에 사용하는 Jupyter와 업무 파이프라인은 현재 미배포 상태다. 아래 내용은 저장소 설정과 이전 실행 기록을 설명한다.
+현재 클러스터 조회 방법은 [루트 README](../../../README.md)를 참고한다.
+
 ## 학습 목표
 
 현재 Spark 실행 방식과 KubernetesExecutor를 구분한다.
 
-## 현재 실행 방식
+## 저장소의 Spark 실행 설정
 
 Spark **4.1.2**, Iceberg **1.11.0**, Java 21 기반 이미지가 Jupyter Pod에 들어 있다.
 Spark 설정의 `spark.master`는 **`local[2]`**다. 현재 별도 Spark master/worker
@@ -62,7 +65,7 @@ spark.range(10).groupBy().sum("id").show()
 
 Spark event log는 현재 컨테이너 임시 경로에 있어 Pod 교체 뒤 유지되지 않는다.
 Jupyter 노트북 PVC와 Garage의 streaming checkpoint는 서로 다른 저장 대상이다.
-두 업무 streaming Deployment는 replicas=0이므로 현재 이들이 상시 처리 중인 것은 아니다.
+두 업무 streaming Deployment 템플릿은 `replicas: 0`으로 설정돼 있다.
 
 ## 확인 문제
 

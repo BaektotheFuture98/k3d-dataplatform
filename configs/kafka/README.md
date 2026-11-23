@@ -1,6 +1,8 @@
 # Kafka / Connect files
 
-파일 구성 전용이며 이 작업에서는 배포·이미지 빌드·Secret 생성·메시지 전송을 실행하지 않았다.
+2026-11-24 기준 Strimzi·Kafka·Connect는 미배포 상태다. 이 문서의 명령은
+이전 `finance-platform`을 대상으로 작성한 초기 구성 예제다. 재배포 전에 Operator 감시 범위,
+리소스 네임스페이스, Connect의 서비스 DNS와 Secret 참조를 대상 환경에 맞춘다.
 
 ## 고정 버전과 공식 근거
 
@@ -40,7 +42,7 @@ Connect internal topics는 worker가 명시적 AdminClient create로 생성하�
 
 `docker/kafka-connect/Dockerfile`은 pinned Strimzi base에 공식 Neo4j JAR을 넣는다.
 기본 Strimzi 이미지에는 Neo4j sink가 없다. 이후 사용자가 이미지를 빌드·검증·게시한 뒤 `__KAFKA_CONNECT_IMAGE__`를 실제 digest/tag로 렌더링해야 한다.
-현재 Connect `replicas: 0`, connector `state: stopped`다. 토큰 상태를 실행 가능한 배포로 간주하지 않는다.
+배포 템플릿의 Connect는 `replicas: 0`, connector는 `state: stopped`다.
 Neo4j와 Secret 준비, 아래 제약조건 적용, plugin discovery와 이벤트 계약 검증을 마친 이후에만 worker replicas를 1로, connector state를 running으로 변경한다.
 이 단계들은 아직 실행 검증하지 않았다.
 

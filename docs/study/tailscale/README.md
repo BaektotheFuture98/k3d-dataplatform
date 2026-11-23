@@ -1,8 +1,7 @@
 # Tailscale: 다른 기기에서 내부 웹 도구에 접속하기
 
 > **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
-> 관련 본문: [11장](../chapters/11-network-boundaries.md) · [12장](../chapters/12-services-dns-ingress.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
-> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
+> 관련 본문: [11장](../chapters/11-network-boundaries.md) · [12장](../chapters/12-services-dns-ingress.md).
 
 ## 학습 목표
 
@@ -14,18 +13,19 @@
 같은 Tailnet의 기기
   → Tailscale Serve HTTPS
   → 서버의 127.0.0.1:8080
-  → Traefik → Airflow / Jupyter / Headlamp
+  → Traefik → 대상 UI
 ```
 
-Airflow는 서버의 HTTPS 기본 포트, Jupyter는 HTTPS 8443을 사용하도록 구성했다.
-Headlamp는 별도 Tailscale Service 이름을 사용한다.
+Airflow의 기본 HTTPS 포트와 Jupyter의 HTTPS 8443은 이전 환경에서 사용한 경로다.
+2026-11-24 기준 두 앱과 Ingress는 미배포 상태다. Headlamp는 `dev`의 별도 Ingress와
+Tailscale Service 이름을 사용한다.
 개인 기기 주소와 Tailnet 도메인은 이 공개 문서에서 가렸다.
 
-| 주소 자리 | 대상 |
+| 주소 자리 | 대상과 상태 |
 | --- | --- |
-| `https://<AIRFLOW_HOST>` | Airflow |
-| `https://<AIRFLOW_HOST>:8443` | Jupyter |
-| `https://<HEADLAMP_HOST>` | Headlamp |
+| `https://<AIRFLOW_HOST>` | 이전 Airflow 경로 |
+| `https://<AIRFLOW_HOST>:8443` | 이전 Jupyter 경로 |
+| `https://<HEADLAMP_HOST>` | 현재 Headlamp 경로 |
 
 Tailscale 정책이 통과해도 Airflow 계정이나 Jupyter 토큰 인증은 별도로 필요하다.
 Serve는 앱 인증을 대신하지 않는다. 서버에서 자기 주소로 성공한 검사만으로

@@ -4,15 +4,17 @@
 > 관련 본문: [23장](../chapters/23-data-processing.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
 > 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
+2026-11-24 기준 Jupyter는 현재 미배포 상태다. 아래 접속·조회 예제는 이전 `finance-platform` 구성 기준이다.
+현재 클러스터 조회 방법은 [루트 README](../../../README.md)를 참고한다.
+
 ## 학습 목표
 
 노트북 파일, 실행 커널 메모리, 외부 테이블 데이터의 수명을 구분한다.
 
-## 현재 구성
+## 이전 환경의 구성
 
-Jupyter Deployment 1개 안에서 JupyterLab과 Spark 개발 환경을 제공한다.
-기존 검증 기록의 JupyterLab 버전은 4.4.9이며 현재 실행 이미지와 Pod 상태를
-대조했다. Pod의 Service는 `jupyter:8888`이다.
+이전 환경의 Jupyter Deployment 1개가 JupyterLab 4.4.9와 Spark 개발 환경을
+제공했다. Service 주소는 `jupyter:8888`이었다.
 
 | 항목 | 현재 설정 |
 | --- | --- |

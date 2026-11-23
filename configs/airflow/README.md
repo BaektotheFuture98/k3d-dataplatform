@@ -1,6 +1,10 @@
 # Airflow 파일 계약
 
-**현재 executor는 KubernetesExecutor다.** 2026-11-13 전환했고, 별도 worker Pod에서
+2026-11-24 기준 Airflow는 새 환경에 미배포 상태다. 아래 설정과 검증은 이전
+`finance-platform` 환경을 기준으로 한다. 재배포 전에 Helm values의 worker 네임스페이스,
+RBAC, PostgreSQL 연결과 DAG·로그 PVC를 대상 환경에 맞춘다.
+
+**저장소의 executor 설정은 KubernetesExecutor다.** 2026-11-13 전환했고, 별도 worker Pod에서
 검증 태스크 성공 및 Pod 삭제 후 로그 보존까지 확인했다.
 DAG/log 공유 PVC, namespace RBAC, Helm 재적용·복구 방법은
 [KubernetesExecutor 전환](KUBERNETES-EXECUTOR.md)에 있다.

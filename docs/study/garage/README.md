@@ -4,15 +4,18 @@
 > 관련 본문: [13장](../chapters/13-storage.md) · [22장](../chapters/22-data-storage.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
 > 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
+2026-11-24 기준 Garage는 현재 미배포 상태다. 아래 저장소 구성과 조회 명령은 이전 `finance-platform` 기준이다.
+현재 클러스터 조회 방법은 [루트 README](../../../README.md)를 참고한다.
+
 ## 학습 목표
 
 파일 저장소와 관계형 DB, Iceberg catalog의 책임을 구분한다.
 
-## 현재 역할
+## 이전 환경의 역할
 
-Garage **2.4.1**을 StatefulSet `garage`와 Pod `garage-0` 하나로 실행한다.
+이전 환경에서는 Garage **2.4.1**을 StatefulSet `garage`와 Pod `garage-0` 하나로 실행했다.
 Iceberg 테이블의 실제 데이터 파일과 메타데이터 JSON을 S3 호환 API로 저장한다.
-현재 warehouse는 `s3://warehouse/`다. 이것은 Mac 로컬 폴더 경로가 아니다.
+이전 환경의 warehouse는 `s3://warehouse/`다. 이것은 Mac 로컬 폴더 경로가 아니다.
 
 | 설정 | 현재 선언 |
 | --- | --- |

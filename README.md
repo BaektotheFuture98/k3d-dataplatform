@@ -3,33 +3,35 @@
 기사 데이터를 수집·정제하고 Neo4j 그래프로 제공하기 위한 로컬 데이터 플랫폼이다.
 Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 
-**기반 서비스와 Article 테이블을 구성했고, Bronze→Silver·Silver→Gold 코드와 이미지를 준비했다.**
-두 업무 Deployment는 `replicas: 0`으로 유지하며 실제 Gemini 호출과 기사 상시 처리는 시작하지 않았다.
-아래 상태는 2026-10-18 확인 기준이다. 실제 실행 명령과 검증 결과는
-[인프라 실행 기록](configs/runtime/VALIDATION.md)에 정리했다.
+2026-11-24 조회 기준으로 Headlamp, Jenkins, Argo CD와 K3s 시스템 서비스가 실행 중이다.
+기존 `finance-platform` 네임스페이스를 삭제하고 앱 배포 환경을 `dev`·`stage`·`prod`로 분리했다.
+이전 데이터 스택의 실행·검증 결과는 [인프라 실행 기록](configs/runtime/VALIDATION.md)에 있다.
 
-## 현재 구축 상태
+## 현재 클러스터 상태
 
-| 구성 | 버전 | 역할 | 상태 |
+| 구성 | 버전 | 네임스페이스 | 상태 |
 | --- | --- | --- | --- |
-| PostgreSQL | 17.11 | Airflow 메타데이터와 Iceberg 카탈로그 DB | Ready |
-| Garage | 2.4.1 | S3 호환 객체 저장소, `warehouse` 버킷 | Ready |
-| Iceberg REST | 1.11.0 | PostgreSQL JDBC 기반 카탈로그 API | Ready |
-| Spark / JupyterLab | 4.1.2 / 4.4.9 | 데이터 처리와 노트북 개발 | Jupyter Ready, Spark Local 실행 검증 |
-| Airflow | 3.0.2, chart 1.18.0 | 작업 스케줄링과 오케스트레이션 | KubernetesExecutor, 검증 DAG 성공·일시정지 |
-| Neo4j Community | 5.26.32 | 기사·이벤트 그래프 저장 | Ready, 인증·합성 데이터 쿼리 검증 |
-| Strimzi / Kafka | 0.51.0 / 4.2.0 예정 | 이벤트 브로커 관리와 메시지 전달 | 미설치, 클러스터 리소스 승인 대기 |
-| Kafka Connect | Kafka 4.2.0, Neo4j 플러그인 5.1.16 예정 | Kafka 이벤트를 Neo4j에 반영 | 이미지 빌드·k3d 반입 완료, 미기동 |
-| Bronze→Silver | Python 3.13.14 / Spark 4.1.2 | 기사 품질 검사·정규화·최신 상태 MERGE | 코드·이미지·ConfigMap 준비, 0 replicas |
-| Silver→Gold | Python 3.13.14 / Gemini Batch | 온톨로지 추출·RDF·SHACL 검증 | 코드·이미지·ConfigMap 준비, 0 replicas, 실제 API 미호출 |
+| Headlamp | 0.46.0 | `dev` | Ready |
+| Jenkins | 2.580.2, chart 5.13.3 | `jenkins` | Ready, `main` 검증 빌드 성공 |
+| Argo CD | 3.6.1, chart 10.18.0 | `argocd` | Ready, `dev` 검증 앱 `Synced / Healthy` |
+| Traefik | 3.6.12 | `kube-system` | Ready |
 
-상시 실행 Pod는 총 8개이며 모두 Ready다. 과거 검증 Job의 Completed/Error Pod는
-실행 중인 서비스와 별개이며 TTL 정리 대상이다.
-MinIO는 Garage로 대체했고, 사용하지 않는 MinIO·mc 빈 폴더와 manifest는 정리했다.
+조회 당시 시스템을 포함한 실행 중인 Pod 12개가 모두 Ready였다. `stage`와 `prod`는
+네임스페이스와 Argo CD 배포 프로젝트가 준비되어 있다. PostgreSQL, Garage, Iceberg REST,
+JupyterLab, Airflow, Neo4j, Kafka 및 기사 파이프라인은 현재 클러스터에 미배포 상태다.
+데이터 스택의 저장소 버전과 이전 `finance-platform` 검증 내역은 아래에 기록한다.
+
+| 구성 | 저장소 버전 및 상태 |
+| --- | --- |
+| PostgreSQL / Garage / Iceberg REST | 17.11 / 2.4.1 / 1.11.0, 이전 환경에서 연결 검증 |
+| Spark / JupyterLab | 4.1.2 / 4.4.9, 이전 환경에서 Spark Local 실행 검증 |
+| Airflow / Neo4j | 3.0.2 (chart 1.18.0) / 5.26.32, 이전 환경에서 worker 실행 및 Bolt 조회 검증 |
+| Strimzi / Kafka / Connect | 0.51.0 / 4.2.0 / Neo4j 플러그인 5.1.16, 설정 준비 |
+| Bronze→Silver / Silver→Gold | Python 3.13.14 / Spark 4.1.2, 코드와 비활성 배포 템플릿 준비 |
 
 ## 아키텍처
 
-현재 연결하고 검증한 기반 서비스의 관계는 다음과 같다.
+이전 환경에서 검증한 기반 서비스 구성은 다음과 같다.
 
 ```text
 Airflow ───────────────────────────→ PostgreSQL / airflow_meta
@@ -38,7 +40,7 @@ Jupyter / Spark Local ──→ Iceberg REST ──→ PostgreSQL / iceberg_cata
          │                     │
          └─────────────────────┴───────→ Garage / warehouse
 
-Neo4j: 독립 실행 중, 기사 데이터 적재는 아직 연결하지 않음
+Neo4j: 단독 Bolt 연결 검증, 기사 데이터 적재는 미연결
 ```
 
 Iceberg는 테이블 포맷이다. 데이터 파일과 Iceberg 메타데이터 JSON은 Garage에 저장하고,
@@ -53,7 +55,7 @@ Garage용 Hadoop S3A 체크포인트·로그 설정을 반영한 이미지를 Ju
 합성 스트리밍의 프로세스 재시작 복구와 Iceberg 입출력을 확인했다.
 두 업무 streaming 템플릿도 같은 설정을 사용하도록 준비했으며 아직 기동하지 않았다.
 
-목표 업무 흐름은 다음과 같다. **현재 상시 처리는 중지 상태이며 전체 연결은 미완료다.**
+목표 업무 흐름은 다음과 같다. **기사 상시 처리는 시작하지 않았으며 전체 연결은 미완료다.**
 
 ```text
 Airflow → Article Collector Job → Iceberg Bronze
@@ -99,8 +101,8 @@ Gold는 `(article_id, ont_version)`별 한 번 저장한다. 이미 분석한 �
 | `lakehouse.gold.graph_article` | 10 | 온톨로지 분석 완료일 |
 | `lakehouse.ops.ontology_batch_job` | 9 | 배치 생성일 |
 
-Jupyter의 [테이블 구성 노트북](http://jupyter.localhost:8080/lab/tree/notebooks/article_medallion.ipynb)에서
-생성 SQL과 검증 출력을 확인하고 다시 실행할 수 있다.
+[테이블 구성 노트북](workspace/notebooks/article_medallion.ipynb)에서 생성 SQL과 검증 출력을
+확인할 수 있다. 다시 실행하려면 Jupyter, Iceberg REST, Garage 등 의존 서비스를 먼저 준비한다.
 소스와 원본 대비 변경 사항은 [노트북 안내](workspace/notebooks/README.md)에 있다.
 원본에 생성 정의가 없는 `ops.article_pipeline_state`는 생성하지 않았다.
 
@@ -112,12 +114,16 @@ Jupyter의 [테이블 구성 노트북](http://jupyter.localhost:8080/lab/tree/n
 | 클러스터 / kubectl context | `dev` / `k3d-dev` |
 | 노드 | `k3d-dev-server-0` 단일 노드, ARM64 |
 | Kubernetes | K3s `v1.35.5+k3s1` |
-| 노드 자원 | CPU 2개, 메모리 약 23.4GiB (2026-10-19 Colima 24GiB로 증설) |
-| Namespace | `finance-platform` |
+| Colima VM | 8 CPU, 메모리 25.6GiB, 디스크 183GiB (`colima list` 표시값) |
+| Kubernetes 노드 자원 | 8 CPU, 메모리 약 25.0GiB |
+| 네임스페이스 | 앱 `dev`·`stage`·`prod`, CI/CD `jenkins`·`argocd` |
 | StorageClass | `local-path`, RWO |
 | 네트워크 | 내부 ClusterIP Service, UI는 Traefik Ingress와 Mac 루프백 포트로 접속 |
 
-| PVC | 요청 용량 | 저장 내용 |
+현재 PVC는 `jenkins/jenkins` 한 개로, 요청 용량은 10Gi이고 `Bound` 상태다.
+아래 표는 이전 `finance-platform` 환경의 저장소 구성이다.
+
+| 이전 PVC | 요청 용량 | 저장 내용 |
 | --- | --- | --- |
 | `data-postgres-0` | 10Gi | Airflow·Iceberg 카탈로그 DB |
 | `data-garage-0` | 10Gi | Garage 메타데이터와 객체 파일 |
@@ -127,22 +133,12 @@ Jupyter의 [테이블 구성 노트북](http://jupyter.localhost:8080/lab/tree/n
 단일 노드 개발 환경으로 고가용성을 제공하지 않는다.
 `local-path`의 요청 용량은 실제 디스크 quota를 보장하지 않으며,
 PVC 또는 클러스터·Colima VM 삭제 시 데이터가 소실될 수 있다.
-백업·복원 테스트는 아직 수행하지 않았다. Airflow 로그는 공유 PVC에 보존한다.
+백업·복원 테스트는 아직 수행하지 않았다. 이전 Airflow 구성은 로그를 공유 PVC에 보존했다.
 
 ## 상태 확인과 접속
 
-Tailscale에 연결한 기기에서는 다음 HTTPS 주소를 사용한다. 기존 로그인 인증을 유지한다.
-
-| UI | Tailnet 접속 주소 |
-| --- | --- |
-| Airflow | <https://seonmin-mac-mini.tail481f72.ts.net> |
-| JupyterLab | <https://seonmin-mac-mini.tail481f72.ts.net:8443> |
-| Headlamp | <https://headlamp.tail481f72.ts.net> (호스트 승인·접근 정책 반영, HTTPS 응답 검증) |
-
-2026-10-19 서버 자체에서 Tailscale IP로 TLS·HTTP 응답을 검증했다. MacBook 원격 접속은
-사용자가 TCP 443·8443 접근 정책을 추가했고 서버 수신 규칙에 반영된 것을 확인했다.
-MacBook 브라우저 접속 확인은 남아 있다. 호스트 Mac의 DNS 보정과
-재적용 방법은 [접속 설정](configs/ingress/README.md)에 정리했다.
+Headlamp는 Tailscale에 연결한 기기에서 <https://headlamp.tail481f72.ts.net>으로 접속한다.
+Jenkins와 Argo CD의 UI는 로컬 포트포워딩으로 접속한다.
 
 Kubernetes 관리 화면 Headlamp 0.46.0은 `dev`에 배포한다. 기존 `admin` 계정으로
 로그인하면 `dev`·`stage`·`prod`를 조회할 수 있으며, 수정 권한은 `dev`에만 있다.
@@ -151,41 +147,18 @@ Kubernetes 관리 화면 Headlamp 0.46.0은 `dev`에 배포한다. 기존 `admin
 CI/CD 도구는 `jenkins`와 `argocd` 네임스페이스에 각각 설치한다. Jenkins의 검증
 파이프라인과 Argo CD의 환경별 배포 설정은 [CI/CD 운영 안내](deploy/gitops/README.md)에 있다.
 
-아래 명령은 저장소 루트에서 실행한다.
-
 ```sh
 kubectl --context k3d-dev get nodes -o wide
-kubectl --context k3d-dev -n finance-platform get deployments,statefulsets
-kubectl --context k3d-dev -n finance-platform get pods,svc,pvc
+kubectl --context k3d-dev get namespaces
+kubectl --context k3d-dev get deployments,statefulsets,pods,pvc -A
+kubectl --context k3d-dev -n argocd get application,appproject
 ```
 
-Mac에서 아래 주소로 접속한다. 별도의 port-forward 터미널은 필요하지 않다.
+Airflow와 Jupyter는 Ingress와 백엔드가 미배포 상태다. 2026-11-24 로컬 Traefik에서
+두 주소 모두 404를 반환했다. [이전 접속 설정과 검증 기록](configs/ingress/README.md)에
+재구성 시 참고할 경로가 있다.
 
-| UI | 접속 주소 |
-| --- | --- |
-| JupyterLab | <http://jupyter.localhost:8080> |
-| Airflow | <http://airflow.localhost:8080> |
-
-```text
-Mac 127.0.0.1:8080 → k3d serverlb:80 → Traefik → Ingress → Service → Pod
-```
-
-`platform-ui` Ingress가 호스트 이름으로 두 서비스를 구분한다.
-HTTP 포트는 `127.0.0.1`에만 연결하며 기존 토큰·로그인 인증을 유지한다.
-구성·재적용 방법은 [로컬 UI 접속 설정](configs/ingress/README.md)을 참고한다.
-
-직접 포트 전달이 필요한 경우에는 기존 방식도 사용할 수 있다.
-Ingress가 사용하는 8080과 충돌하지 않도록 Airflow는 18080으로 전달한다.
-
-```sh
-# Airflow: http://127.0.0.1:18080
-kubectl --context k3d-dev -n finance-platform port-forward service/airflow-api-server 18080:8080
-
-# JupyterLab: http://127.0.0.1:8888
-kubectl --context k3d-dev -n finance-platform port-forward service/jupyter 8888:8888
-```
-
-| 서비스 | 클러스터 내부 주소 |
+| 서비스 | 이전 데이터 스택의 내부 접속 계약 |
 | --- | --- |
 | PostgreSQL | `postgres:5432` |
 | Garage S3 | `http://garage:3900`, region `garage`, path-style |
@@ -199,7 +172,7 @@ Neo4j 인증은 `neo4j-auth` Secret에서 관리한다.
 DB와 S3 인증은 각각 `postgres-credentials`, `garage-credentials`를 사용한다.
 실제 비밀번호·토큰·Secret YAML은 Git이나 공유 로그에 남기지 않는다.
 
-## 검증한 범위와 제한
+## 이전 데이터 스택에서 검증한 범위와 제한
 
 - PostgreSQL: 전용 계정·권한, TCP 접속, Pod 교체 후 데이터 보존, Airflow migration.
 - Garage: S3 객체 입출력, multipart, 익명 접근 차단, 재시작 후 객체 보존.
@@ -216,14 +189,15 @@ Garage 호환을 위해 Catalog와 Jupyter에 AWS SDK checksum 설정을 적용�
 
 기사 수집부터 Neo4j 적재까지의 전체 처리, 실제 Gemini 응답과 업무 데이터의 streaming 처리,
 브라우저 노트북 UI/kernel 상호작용, Neo4j 신규 PVC의 Pod 교체 후 보존은 미검증이다.
-현재 자원은 기반 서비스용으로 조정했으며, 두 streaming 작업을 추가하기 전 자원을 재평가해야 한다.
+재배포 후 두 streaming 작업을 함께 실행하기 전에 자원 사용량을 다시 확인한다.
 
 ## 배포 파일과 변경 방법
 
 ```text
 deploy/k8s/
-  helm/             Airflow, Neo4j, Strimzi chart 설정
+  helm/             서비스별 Helm values와 보조 리소스
   manifests/        서비스별 Kubernetes manifest와 업무 템플릿
+deploy/gitops/      Jenkins 작업 정의, Argo CD 프로젝트 및 dev 검증 앱
 configs/
   runtime/          실제 실행·검증 기록과 smoke 도구
   postgres/         DB 초기화·인증·검증
@@ -257,8 +231,9 @@ python3 scripts/render-manifests.py --source deploy/k8s \
 Renderer는 파일만 생성하며 배포하지 않는다. 기존 출력 디렉터리는 덮어쓰지 않는다.
 **manifest 또는 렌더링 출력 전체를 재귀 apply하지 않는다.**
 검증용 Job과 미배포 업무 리소스가 함께 있으므로 서비스별 파일을 선택해 dry-run 후 적용한다.
-Airflow와 Neo4j는 고정 chart·values로 Helm upgrade하며 기존 Secret과 PVC를 재사용한다.
-실제로 사용한 빌드·import·배포 명령은 [실행 기록](configs/runtime/VALIDATION.md)에 있다.
+이전 템플릿에는 `metadata.namespace: finance-platform`, 서비스 DNS, Secret 및 PVC 참조가
+남아 있다. 재배포할 환경을 정한 뒤 이 참조를 함께 검토하고 필요한 자격증명과 저장소를 준비한다.
+이전 빌드·import·배포 명령은 [실행 기록](configs/runtime/VALIDATION.md)에 있다.
 
 정적 설정 검사는 다음과 같다.
 
@@ -284,14 +259,13 @@ docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 
 5. Kafka topic·Neo4j 제약 조건·Sink Connector를 연결하고 기사 적재를 검증한다.
 6. Service API를 구현하고 백업·복원 절차를 검증한다.
 
-업무 streaming 두 Deployment는 클러스터에 `replicas: 0`으로 준비했다. Publisher CronJob은 템플릿에서 `suspend: true`,
-Connect는 `replicas: 0`, Connector는 `stopped`로 준비되어 있다.
-Publisher·Connect·Connector 업무 리소스는 아직 생성하지 않았다.
+저장소 템플릿에서 업무 streaming Deployment 두 개와 Connect는 `replicas: 0`,
+Publisher CronJob은 `suspend: true`, Connector는 `stopped`다.
 
 ## 상세 문서
 
-현재 실행 상태는 [인프라 실행 기록](configs/runtime/VALIDATION.md)을 기준으로 확인한다.
-서비스별 문서에는 최초 파일 준비 단계의 기록도 포함되어 있다.
+현재 실행 상태는 위 조회 명령으로 확인한다. 서비스별 문서와
+[인프라 실행 기록](configs/runtime/VALIDATION.md)은 이전 설치 시점의 검증 근거를 보존한다.
 
 | 문서 | 내용 |
 | --- | --- |

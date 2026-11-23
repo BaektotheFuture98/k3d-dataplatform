@@ -1,8 +1,7 @@
 # Traefik: 브라우저 요청을 Service로 라우팅하기
 
 > **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
-> 관련 본문: [11장](../chapters/11-network-boundaries.md) · [12장](../chapters/12-services-dns-ingress.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
-> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
+> 관련 본문: [11장](../chapters/11-network-boundaries.md) · [12장](../chapters/12-services-dns-ingress.md).
 
 ## 학습 목표
 
@@ -12,9 +11,10 @@ Ingress 선언과 Ingress controller의 차이를 이해한다.
 
 Ingress 객체에 host/path를 써도 이를 해석해 요청을 전달하는 controller가 필요하다.
 이 프로젝트는 K3s의 Traefik을 사용하며 앱 Ingress class는 `traefik`이다.
-`platform-ui`는 Airflow와 Jupyter를 구분하고 Headlamp는 별도 Ingress를 사용한다.
-이번 조사에서 kube-system의 현재 Pod 목록을 확인하지 못했으므로 Traefik의
-실시간 image/version이나 Pod 개수를 추정해 기입하지 않았다.
+`platform-ui`는 이전 Airflow·Jupyter 경로의 매니페스트다. 2026-11-24 조회 시
+`kube-system`의 Traefik이 Ready였고, 실제 Ingress는 `dev`의 Headlamp만 있었다.
+
+이전 두 호스트 규칙과 현재 Headlamp 규칙은 다음 순서로 요청을 전달한다.
 
 ```text
 Host: airflow.localhost → airflow-api-server:8080
@@ -40,9 +40,9 @@ hash를 검증하고 `removeHeader: true`로 Basic Authorization 헤더를 뒤�
 ## 조회 실습
 
 ```sh
-kubectl --context k3d-dev -n finance-platform get ingress
-kubectl --context k3d-dev -n finance-platform get middleware headlamp-basic-auth
-kubectl --context k3d-dev -n finance-platform get ingressroute tailscale-jupyter
+kubectl --context k3d-dev get ingress -A
+kubectl --context k3d-dev -n dev get middleware headlamp-basic-auth
+kubectl --context k3d-dev get ingressroute -A
 ```
 
 CRD인 Middleware/IngressRoute와 표준 Ingress를 구분해 본다.
@@ -52,8 +52,8 @@ CRD인 Middleware/IngressRoute와 표준 Ingress를 구분해 본다.
 curl --noproxy '*' -I -H 'Host: airflow.localhost' http://127.0.0.1:8080/
 ```
 
-로그인으로의 redirect는 앱 도달을 의미할 수 있다. 404가 나오면 요청 Host와
-Ingress 규칙, 503이면 Service endpoint를 확인한다.
+2026-11-24 조회 시 Airflow 호스트는 규칙이 없어 404를 반환했다. 404가 나오면 요청 Host와
+Ingress 규칙을, 503이면 Service endpoint를 확인한다.
 
 ## 확인 문제
 

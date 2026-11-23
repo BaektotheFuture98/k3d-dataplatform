@@ -4,6 +4,9 @@
 > 관련 본문: [2장](../chapters/02-process-container-vm.md) · [3장](../chapters/03-colima-docker.md) · [10장](../chapters/10-images-and-resources.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
 > 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
+2026-11-24 기준 Airflow는 현재 미배포 상태다. 아래 `finance-platform`의 Airflow 조회 명령은 이전 환경의 예다.
+현재 클러스터 조회 방법은 [루트 README](../../../README.md)를 참고한다.
+
 ## 학습 목표
 
 이미지 빌드, 컨테이너 실행, Kubernetes에 이미지 전달하는 과정을 구분한다.

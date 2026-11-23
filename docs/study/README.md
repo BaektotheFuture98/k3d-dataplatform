@@ -84,8 +84,10 @@ Kubernetes API server와 Airflow API server가 무엇이 다른지 설명한다.
 
 - 명령은 프로젝트 루트의 **Mac 터미널**에서 실행한다. `exec`가 있으면 지정한
   컨테이너 안에서 뒤쪽 명령을 실행한다. 출력 예시는 실제 관측 결과와 구분한다.
-- `--context k3d-dev`는 대상 클러스터 연결, `-n finance-platform`은 namespace다.
-  Docker 접근이나 조회 권한이 없으면 설명과 예시 출력을 먼저 읽는다.
+- `--context k3d-dev`는 대상 클러스터 연결이고 `-n`은 네임스페이스 지정이다.
+  현재 환경은 `dev`·`stage`·`prod`이며 Headlamp는 `dev`, Jenkins와 Argo CD는 각각
+  `jenkins`와 `argocd`에 있다. 본문의 `-n finance-platform`은 이전 데이터 스택 실습 예제다.
+  실습 전에 대상 서비스가 배포되어 있는지 [루트 README](../../README.md)의 명령으로 확인한다.
 - `port-forward`는 임시 연결이다. 터미널을 유지하고 끝낼 때 `Ctrl+C`로 종료한다.
 - 상태를 바꾸는 실습은 별도 표시한다. 문서 작성 중 배포·재시작·DAG 실행은 하지 않았다.
 
@@ -100,11 +102,11 @@ Kubernetes API server와 Airflow API server가 무엇이 다른지 설명한다.
 
 이 교재는 **2026-11-14**에 재구성했다. 클러스터를 새로 조회한 검증 보고서는 아니다.
 현재 K3s datastore 종류와 시스템 Pod 전체 상태는 여기서 새로 확인하지 않았다.
-과거 기록상 Airflow는 KubernetesExecutor이며 Helm 기록에는 이전 설정이 남아 있었다.
+이전 Airflow 실행 환경에서는 KubernetesExecutor를 검증했다. 현재 Airflow는 미배포 상태이며,
+저장소에 [전환 기록](../../configs/airflow/KUBERNETES-EXECUTOR.md),
+[검증 스크립트](../../configs/airflow/kubernetes-executor-smoke.py),
+[executor 리소스](../../deploy/k8s/helm/airflow/executor-resources.yaml)가 있다.
 재배포 시에는 [16장](chapters/16-helm-and-changes.md)의 대조 절차를 따른다.
-일부 executor 리소스·전환 기록·검증 DAG는 아직 게시되지 않은 로컬 파일이다.
-해당 자료는 클릭 링크 대신 프로젝트 루트 기준 경로로 표시했다. GitHub 사본만
-읽는 경우 그 파일이 없을 수 있으며, 본문의 개념 설명과 학습용 DAG로 먼저 공부할 수 있다.
 
 ## 기존 도구별 문서: 설정 참고 자료
 

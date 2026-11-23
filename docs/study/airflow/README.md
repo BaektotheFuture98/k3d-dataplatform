@@ -4,16 +4,19 @@
 > 관련 본문: [18장](../chapters/18-airflow-concepts.md) · [20장](../chapters/20-airflow-on-kubernetes.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
 > 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
 
+2026-11-24 기준 Airflow는 현재 새 환경에 미배포 상태다. 아래 Pod 수와 조회 명령은 이전 `finance-platform` 구성 기준이다.
+현재 클러스터 조회 방법은 [루트 README](../../../README.md)를 참고한다.
+
 ## 학습 목표
 
 웹 화면, DAG 해석, 스케줄링, 태스크 실행을 서로 다른 역할로 이해한다.
 
-## 현재 구성
+## 이전 환경의 구성
 
 Airflow **3.0.2**, Helm chart **1.18.0**, Kubernetes provider **10.24.0**을 사용한다.
-현재 executor는 `KubernetesExecutor`다. 고정 worker Deployment나 Celery broker는 없다.
+저장소의 executor 설정은 `KubernetesExecutor`다. 고정 worker Deployment나 Celery broker는 없다.
 
-| 컴포넌트 | 현재 Pod 수 | 역할 |
+| 컴포넌트 | 이전 Pod 구성 | 역할 |
 | --- | --- | --- |
 | API server | 1 | 웹 UI·API·태스크 Execution API 제공 |
 | DAG processor | 1 | DAG Python 파일을 읽고 DB에 구조·버전 정보 반영 |
@@ -41,7 +44,7 @@ sequenceDiagram
 ```
 
 Airflow 3에서는 태스크가 Execution API를 사용한다는 점이 중요하다.
-현재 주소는 `http://airflow-api-server:8080/execution/`다.
+이전 환경의 실행 API 주소는 `http://airflow-api-server:8080/execution/`다.
 현재 worker template에는 기존 DB 등 Secret 참조도 있지만, 역할을 이해할 때
 태스크 실행 통신과 scheduler의 메타데이터 DB 사용을 구분한다.
 

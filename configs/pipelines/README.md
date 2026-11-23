@@ -1,7 +1,10 @@
 # Article 데이터 파이프라인
 
-기존 `data_platform` 프로젝트의 Bronze→Silver, Silver→Gold 코드를 현재 k3d 환경으로 이식했다.
-실제 Gemini 호출은 하지 않으며 두 Deployment는 `replicas: 0`으로 배포 준비한다.
+기존 `data_platform` 프로젝트의 Bronze→Silver, Silver→Gold 코드를 k3d 용으로 이식했다.
+2026-11-24 기준 현재 클러스터에 두 파이프라인은 미배포 상태다. 템플릿의 기본값은
+두 Deployment 모두 `replicas: 0`이며 실제 Gemini 호출은 하지 않았다.
+아래 `finance-platform` 명령은 이전 환경 기준이다. 새 환경에서 적용하기 전에 리소스의
+네임스페이스, 공유 Spark 설정, 데이터 스택의 서비스 DNS와 Secret 참조를 검토한다.
 기사 수집기·Gold Publisher·Kafka/Neo4j 업무 적재는 이번 구현 범위에 포함하지 않는다.
 
 ## 처리 흐름
@@ -132,5 +135,5 @@ kubectl --context k3d-dev -n finance-platform scale deployment/silver-to-gold --
 ```
 
 Secret이 이미 있으면 위 생성 명령으로 교체하지 말고 별도 키 갱신 절차를 사용한다.
-2 CPU 노드에서 두 작업 동시 실행의 처리량·장기 메모리 사용은 아직 검증하지 않았다.
+새 환경에서 두 작업을 동시 실행할 때의 처리량과 장기 메모리 사용은 아직 검증하지 않았다.
 수집·Publisher·Airflow DAG 연결은 별도 작업이다.

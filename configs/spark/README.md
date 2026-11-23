@@ -1,5 +1,9 @@
 # Catalog / Spark 파일 구성
 
+2026-11-24 기준 Iceberg REST와 Jupyter는 새 환경에 미배포 상태다. 아래 주소와 설정은
+이전 `finance-platform` 실행 기록이다. 재배포 전에 Jupyter, PostgreSQL, Garage와
+Catalog의 네임스페이스, 서비스 DNS와 Secret 참조를 함께 검토한다.
+
 > 2026-10-18 실행 업데이트: 두 ARM64 이미지를 저장소 Dockerfile로 빌드하고 k3d `dev`에 import했다. 아래는 최초 정적 준비 시점 기록이며, 실제 빌드 결과·수정·검증은 [runtime 실행 기록](../runtime/catalog-spark-notes.md)을 참조한다.
 
 사용자의 후속 실행 지시에 따라 Catalog와 Jupyter를 배포했다. 합성 테이블 쓰기·읽기와
@@ -32,17 +36,17 @@ k3d image import finance-platform/spark:4.1.2-iceberg1.11.0-s3a-v1 --cluster dev
 
 렌더링 시 `__ICEBERG_REST_IMAGE__`, `__SPARK_IMAGE__`를 실제 사용자 이미지명으로 대체한다. ARM 노드에서는 해당 아키텍처로 빌드한다. 업무 pipeline 코드는 포함하지 않는다.
 
-## 연결 및 Secret 계약
+## 이전 환경의 연결 및 Secret 계약
 
 모두 `finance-platform`. Catalog `iceberg-rest:8181`, PostgreSQL `postgres:5432/iceberg_catalog`, 사용자 `iceberg_user`, Secret `postgres-credentials/iceberg-password`. JDBC catalog는 Iceberg catalog 테이블을 초기화할 수 있는 DB 권한이 필요하다.
 
 Garage `http://garage.finance-platform.svc.cluster.local:3900`, region `garage`, path-style, warehouse `s3://warehouse/`. Catalog와 Spark는 AWS SDK 기본 credential provider가 읽는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`에 `garage-credentials/s3-access-key-id` / `s3-secret-access-key`를 직접 주입한다. 키는 spark-defaults, 이미지, ConfigMap에 넣지 않는다.
 
-Jupyter는 replicas=1이고 `jupyter-auth/token`으로 인증한다. Secret을 생성했고 무토큰/잘못된 토큰은
-HTTP403, 올바른 토큰은 HTTP200으로 확인했다. ClusterIP `jupyter:8888`를 유지하며
-이후 추가한 Traefik Ingress로 Mac의 `http://jupyter.localhost:8080`에서 접근한다.
-토큰 인증과 WebSocket 연결을 검증했다. [로컬 UI 접속 설정](../ingress/README.md)을 참고한다.
-노트북은 `jupyter-workspace` local-path PVC에 보관한다. Spark는 각 프로세스의 `local[2]`로 실행한다.
+이전 Jupyter는 Pod 1개를 띄우고 `jupyter-auth/token`으로 인증했다. 무토큰·잘못된 토큰은
+HTTP 403, 올바른 토큰은 HTTP 200으로 확인했다. ClusterIP `jupyter:8888`에 Traefik Ingress를
+연결해 Mac의 `http://jupyter.localhost:8080`에서 접근했다. 토큰 인증과 WebSocket 연결은
+[이전 로컬 UI 접속 기록](../ingress/README.md)을 참고한다. 노트북은 `jupyter-workspace`
+local-path PVC를 사용했다. 저장소의 Spark 설정은 각 프로세스의 `local[2]`를 사용한다.
 Spark UI는 비활성화했다. `configs/spark/spark-defaults.conf`와 ConfigMap을 함께 유지한다.
 
 ## 원본 Spark 설정과의 동기화
@@ -67,7 +71,8 @@ Iceberg AWS bundle도 유지하므로 클래스패스 조합은 S3A 체크포인
 원본의 `/home/iceberg/spark-events`와 경로만 다르며 별도 History Server나 로그 영속 볼륨은 구성하지 않는다.
 Pod 교체 시 이벤트 로그는 유지되지 않는다. 노트북 PVC와 Garage의 checkpoint는 별개로 보존한다.
 
-2 CPU 개발 노드에 맞춘 driver 1GiB, shuffle partitions=4, UI 비활성화와 Java 21은 유지한다.
+저장소 설정은 이전 2 CPU 환경에서 검증한 driver 1GiB, shuffle partitions=4,
+UI 비활성화와 Java 21을 유지한다. 노드 자원은 [루트 README](../../README.md)의 현재 조회값을 참고한다.
 UTC를 공통 설정으로 지정했다. 두 업무 streaming 템플릿도 동일 ConfigMap을 사용하지만
 업무 코드·이미지의 준비와 실행 검증은 별도다.
 

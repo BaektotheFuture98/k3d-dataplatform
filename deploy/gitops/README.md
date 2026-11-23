@@ -34,10 +34,10 @@ Argo CD는 `https://127.0.0.1:18443`, Jenkins는 `http://127.0.0.1:18081`에서
 열린다. 초기 계정 정보는 `argocd-initial-admin-secret`, Jenkins 릴리스의 `jenkins`
 Secret을 사용한다. 자격증명은 셸 출력 공유나 Git에 포함하지 않는다.
 
-Git에 설정이 반영되면 Jenkins에서 `platform-validation` Pipeline을
-[작업 정의](jenkins-validation-job.xml)로 등록한다. 초기 실행이 끝나면 Jenkinsfile의
-SCM polling이 `main`의 변경을 확인한다. 검증은 Kubernetes 에이전트에서 Python
-단위 테스트와 YAML 정적 검사를 실행한다.
+2026-11-23 Jenkins의 `platform-validation`을 `main`으로 전환하고 빌드 #2에서
+Python 단위 테스트 12개와 YAML 정적 검사를 확인했다. 재설치 시에는
+[작업 정의](jenkins-validation-job.xml)로 Pipeline을 등록하고 한 번 실행한다.
+이후 Jenkinsfile의 SCM polling이 `main`의 변경을 확인한다.
 
 ```sh
 kubectl --context k3d-dev apply -f deploy/gitops/dev/application.yaml
@@ -45,7 +45,8 @@ kubectl --context k3d-dev -n argocd get application platform-dev-smoke
 kubectl --context k3d-dev -n dev get configmap platform-gitops-smoke
 ```
 
-`platform-dev-smoke`는 `dev`의 ConfigMap 한 개를 자동 동기화한다. `stage`와 `prod`에는
+`platform-dev-smoke`는 `main`에서 `dev`의 ConfigMap 한 개를 자동 동기화한다.
+2026-11-24 조회 시 `Synced / Healthy`였다. `stage`와 `prod`에는
 배포 가능 경로만 설정한다. 애플리케이션을 등록할 때는 해당 `AppProject`를 지정하고
 수동 동기화로 시작한다. 이미지 빌드·푸시와 Git 기반 버전 승격에는 레지스트리 및 Git 쓰기
 자격증명, 환경별 앱 매니페스트가 필요하다.

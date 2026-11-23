@@ -1,6 +1,11 @@
-# Mac에서 Jupyter와 Airflow 접속
+# Airflow·Jupyter 접속 구성 기록
 
-## Tailscale 접속
+2026-11-24 기준 Airflow·Jupyter와 `platform-ui` Ingress는 미배포 상태다. 로컬 Traefik에서
+두 호스트는 404를 반환한다. 지금 실행 중인 Headlamp 접속은 [Headlamp 운영 안내](../headlamp/README.md)를 참고한다.
+아래 주소와 적용 명령은 이전 `finance-platform` 환경에서 사용한 기록이다. 재배포 시 대상 환경과
+두 매니페스트의 네임스페이스, 백엔드 Service 이름을 함께 맞춘다.
+
+## 이전 Tailscale 접속
 
 2026-10-19 Tailscale Serve를 다음과 같이 연결했다. 접속 기기는 같은 Tailnet에 연결되어
 있어야 하며 기존 Airflow 로그인과 Jupyter 토큰 인증을 사용한다.
@@ -60,10 +65,10 @@ tailscale serve --https=443 off
 tailscale serve --https=8443 off
 ```
 
-## 로컬 접속
+## 이전 로컬 접속
 
-기존 k3d `dev` 클러스터의 Traefik을 사용한다. 애플리케이션 Service는 ClusterIP를 유지하고,
-`finance-platform/platform-ui` Ingress가 호스트 이름에 따라 요청을 전달한다.
+기존 k3d `dev` 클러스터의 Traefik을 사용했다. 애플리케이션 Service는 ClusterIP였고,
+`finance-platform/platform-ui` Ingress가 호스트 이름에 따라 요청을 전달했다.
 
 | 주소 | 대상 |
 | --- | --- |

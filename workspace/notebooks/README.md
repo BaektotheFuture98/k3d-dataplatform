@@ -2,9 +2,10 @@
 
 [article_medallion.ipynb](article_medallion.ipynb)는 기존 `data_platform` 프로젝트의
 `workspace/notebooks/pipelines/price_medallion/medallion.ipynb`를 기준으로 작성했다.
-현재 k3d의 Iceberg REST Catalog와 Garage를 사용한다.
+이전 `finance-platform`에서 Iceberg REST Catalog와 Garage를 사용해 실행했다.
 
-Jupyter에서 열기: <http://jupyter.localhost:8080/lab/tree/notebooks/article_medallion.ipynb>
+2026-11-24 기준 현재 Jupyter는 미배포 상태다. 저장소에서 위 노트북을 열어
+보존한 실행 결과를 확인할 수 있다. 다시 실행하려면 데이터 스택과 Jupyter를 준비한다.
 
 ## 생성한 테이블
 
@@ -25,12 +26,13 @@ JDBC Catalog 등록 정보는 PostgreSQL에 저장된다.
 
 ## 실행
 
-클러스터에는 `/workspace/notebooks/`의 Jupyter PVC에 노트북과 SQL을 저장했다.
+이전 클러스터 구성에서는 Jupyter PVC의 `/workspace/notebooks/`에 노트북과 SQL을 저장했다.
 노트북을 열고 위에서 아래로 실행한다. Spark와 인증 정보는 기존 Pod 설정을 사용한다.
 노트북에 Secret 값을 직접 입력하지 않는다. 마지막 셀은 Spark를 종료해 자원을 반환한다.
 
 저장소의 파일을 새 Jupyter 환경에 업로드할 때는 `sql/`도 함께 전달해야 한다.
-다음은 대상 파일을 검토한 뒤 사용하는 업로드 예시이며 기존 동명 파일을 덮어쓴다.
+다음은 이전 환경의 예시다. 새 환경에서는 먼저 배포된 Jupyter와 대상 네임스페이스를
+확인한다. 업로드하면 대상의 동명 파일을 덮어쓴다.
 
 ```sh
 tar -C workspace -cf - notebooks | kubectl --context k3d-dev -n finance-platform exec -i deployment/jupyter -- tar -C /workspace -xf -

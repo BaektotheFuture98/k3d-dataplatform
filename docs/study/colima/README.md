@@ -1,8 +1,7 @@
 # Colima: Mac 안의 Linux 실행 환경
 
 > **설정 참고 자료** — 처음 공부한다면 [전체 목차](../README.md)의 본문을 먼저 읽는다.
-> 관련 본문: [3장](../chapters/03-colima-docker.md). 아래의 실행 상태·검증 결과는 기존 작성 당시의 기록이며,
-> 2026-11-14 재구성 과정에서 클러스터를 새로 조회한 결과가 아니다.
+> 관련 본문: [3장](../chapters/03-colima-docker.md).
 
 ## 학습 목표
 
@@ -12,9 +11,9 @@ Colima, Docker, Kubernetes를 같은 프로그램으로 생각하지 않고 각 
 
 Colima는 Mac에서 Linux VM과 컨테이너 실행 환경을 관리한다.
 이 프로젝트에서는 Colima의 Docker runtime 위에 k3d 노드 컨테이너를 실행한다.
-실제 조회 값은 profile `default`, `Running`, `aarch64`, CPU 2개, 메모리 24GiB,
-디스크 100GiB다. Kubernetes 노드의 allocatable 메모리가 24GiB보다 작은 것은
-VM·운영체제·Kubernetes 등이 자원을 사용하기 때문이다.
+2026-11-24 `colima list` 표시값은 profile `default`, `Running`, `aarch64`, 8 CPU,
+메모리 25.6GiB, 디스크 183GiB였다. Kubernetes 노드는 같은 날 8 CPU와 약 25.0GiB를
+보고했다. VM 표시값과 Kubernetes가 스케줄링에 사용하는 값은 각각 조회한다.
 
 ```text
 Mac → Colima Linux VM → Docker → k3d 노드 → K3s/containerd → 앱 Pod
@@ -23,7 +22,7 @@ Mac → Colima Linux VM → Docker → k3d 노드 → K3s/containerd → 앱 Pod
 ## 설정 방법
 
 조회는 `colima list`, 상세 정보는 `colima status`로 확인한다.
-새 환경의 VM 자원 지정 예시는 아래와 같다. 기존 환경에 무작정 적용하는 명령은 아니다.
+이전 환경에서 사용한 VM 자원 지정 예시는 아래와 같다.
 
 ```sh
 # 변경 예시: VM 시작/자원 변경은 기존 서비스에 영향을 줄 수 있다.
@@ -49,7 +48,7 @@ kubectl --context k3d-dev get nodes -o wide
 ## 확인 문제
 
 1. Mac이 켜져 있는데 Kubernetes가 접속되지 않을 수 있는 이유는?
-2. Colima 메모리 24GiB와 Pod 메모리 limit 1Gi 중 어느 값이 컨테이너의 직접 한도인가?
+2. Colima의 전체 메모리와 Pod의 메모리 limit 1Gi 중 어느 값이 컨테이너의 직접 한도인가?
 
 **해설:** VM이나 Docker, k3d가 중지될 수 있다. 컨테이너의 직접 한도는 Pod spec의
 컨테이너 memory limit이다. VM 메모리는 모든 워크로드가 공유하는 상위 자원이다.
