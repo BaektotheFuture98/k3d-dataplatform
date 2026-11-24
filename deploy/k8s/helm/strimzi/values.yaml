@@ -1,6 +1,6 @@
 # Official strimzi/strimzi-kafka-operator chart 0.51.0.
 # Requires preinstalled 0.51.0 CRDs and administrator-managed cluster RBAC.
-watchNamespaces: [] # The release namespace only: finance-platform.
+watchNamespaces: [] # The release namespace only: dev.
 watchAnyNamespace: false
 createGlobalResources: false
 createAggregateRoles: false

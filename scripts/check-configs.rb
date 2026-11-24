@@ -27,7 +27,8 @@ Dir['deploy/k8s/**/*.yaml'].sort.each do |path|
       next if doc.nil?
       documents += 1
       next unless path.start_with?('deploy/k8s/manifests/') && doc.is_a?(Hash) && doc['kind']
-      errors << "#{path}: namespace must be finance-platform" unless doc.dig('metadata', 'namespace') == 'finance-platform'
+      expected_namespace = path.start_with?('deploy/k8s/manifests/kafka/') ? 'dev' : 'finance-platform'
+      errors << "#{path}: namespace must be #{expected_namespace}" unless doc.dig('metadata', 'namespace') == expected_namespace
       labels = doc.dig('metadata', 'labels') || {}
       %w[name component part-of managed-by].each do |key|
         errors << "#{path}: missing app.kubernetes.io/#{key}" unless labels["app.kubernetes.io/#{key}"]

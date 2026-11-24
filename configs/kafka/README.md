@@ -1,14 +1,14 @@
 # Kafka / Connect files
 
-2026-11-24 기준 Strimzi·Kafka·Connect는 미배포 상태다. 이 문서의 명령은
-이전 `finance-platform`을 대상으로 작성한 초기 구성 예제다. 재배포 전에 Operator 감시 범위,
-리소스 네임스페이스, Connect의 서비스 DNS와 Secret 참조를 대상 환경에 맞춘다.
+2026-11-24 구성은 `dev`의 Strimzi와 단일 KRaft Kafka 브로커, `article-gold` 토픽이다.
+초기 배포는 데이터 수집·발행 없이 구성과 준비 상태만 확인한다. Connect와 Neo4j sink는
+활성화 절차에 사용할 템플릿으로 보관한다.
 
 ## 고정 버전과 공식 근거
 
 - Strimzi operator/chart/CRDs **0.51.0**, Kafka/Connect **4.2.0**, API `kafka.strimzi.io/v1`.
   [지원표](https://strimzi.io/downloads/), [동일 릴리스 단일 KRaft 예제](https://github.com/strimzi/strimzi-kafka-operator/blob/0.51.0/examples/kafka/kafka-single-node.yaml), [Connect v1 예제](https://github.com/strimzi/strimzi-kafka-operator/blob/0.51.0/examples/connect/kafka-connect.yaml).
-  지원 Kubernetes 범위는 1.30–1.35이며 기존 클러스터 버전은 이번 작업에서 조회하지 않았다.
+  지원 Kubernetes 범위는 1.30–1.35이며 `k3d-dev`는 K3s v1.35.5를 사용한다.
 - Neo4j Apache Kafka connector **5.1.16** self-contained JAR.
   [5.1 설치 문서](https://neo4j.com/docs/kafka/5.1/installation/), [공식 릴리스](https://github.com/neo4j/neo4j-kafka-connector/releases/tag/5.1.16), [공식 SHA-256](https://github.com/neo4j/neo4j-kafka-connector/releases/download/5.1.16/neo4j-kafka-connect-5.1.16.jar.sha256).
   SHA-256 `f137e7b725eeb141cdc80e40bc8e58ae2cd8cc21aca86354b3e122ea8b8bc9f4`를 Dockerfile에서 검사한다.
@@ -18,25 +18,34 @@
 - [Strimzi 0.51 스키마](https://strimzi.io/docs/operators/0.51.0/configuring.html), [외부 설정 로딩](https://strimzi.io/docs/operators/0.51.0/deploying#con-loading-config-from-external-sources-str).
   Secret은 `template.pod.volumes`/`template.connectContainer.volumeMounts`로 `/mnt/neo4j-auth`에 마운트하며 DirectoryConfigProvider로 raw `neo4j-password` 키를 읽는다. Kubernetes Secret API 접근 권한을 Connect에 추가하지 않는다.
 
-## 설치 경계와 나중에 사용할 명령
+## 설치 및 조회
 
-Operator는 release namespace `finance-platform`만 감시한다 (`watchNamespaces: []`, `watchAnyNamespace: false`).
-CRD와 ClusterRole/ClusterRoleBinding은 클러스터 범위다. **0.51.0 CRD 설치/업그레이드와 클러스터 RBAC 준비는 별도 관리자 검토·승인이 필요한 단계**이며 기본 namespaced 적용 대상에 포함하지 않는다.
-`createGlobalResources: false`는 기존 cluster role을 전제로 한다. Helm이 생성하는 cluster role binding도 관리자 검토 대상이다. operator chart를 일반 workload apply와 혼합하지 않는다.
-
-아래는 문서용이며 실행하지 않았다. 로컬 template은 배포가 아니지만 Helm이 설치되어 있어야 한다.
+Operator는 릴리스 네임스페이스인 `dev`만 감시한다 (`watchNamespaces: []`,
+`watchAnyNamespace: false`). 기존 Strimzi 0.51.0 CRD와 ClusterRole을 재사용한다.
+[cluster-bindings.yaml](../../deploy/k8s/helm/strimzi/cluster-bindings.yaml)은 기존 세
+ClusterRoleBinding을 `dev/strimzi-cluster-operator`에 연결한다. 새 클러스터에는 이 명령을
+실행하기 전에 동일 버전의 CRD와 ClusterRole을 준비해야 한다.
 
 ```sh
-helm template strimzi-cluster-operator strimzi-kafka-operator --repo https://strimzi.io/charts/ --version 0.51.0 --namespace finance-platform -f deploy/k8s/helm/strimzi/values.yaml > /tmp/strimzi-rendered.yaml
-# 별도 관리자 승인 후에만 operator 설치 (사전 CRDs/cluster RBAC 필요):
-helm upgrade --install strimzi-cluster-operator strimzi-kafka-operator --repo https://strimzi.io/charts/ --version 0.51.0 --namespace finance-platform --skip-crds -f deploy/k8s/helm/strimzi/values.yaml
-# workloads 적용은 이후 별도 실행 단계에서: NodePool -> Kafka -> topics -> rendered Connect -> connector.
+kubectl --context k3d-dev apply -f deploy/k8s/helm/strimzi/cluster-bindings.yaml
+helm upgrade --install strimzi-cluster-operator strimzi-kafka-operator \
+  --repo https://strimzi.io/charts/ --version 0.51.0 --kube-context k3d-dev \
+  -n dev --skip-crds -f deploy/k8s/helm/strimzi/values.yaml --wait --timeout 5m
+kubectl --context k3d-dev -n dev apply \
+  -f deploy/k8s/manifests/kafka/kafka-nodepool.yaml \
+  -f deploy/k8s/manifests/kafka/kafka.yaml \
+  -f deploy/k8s/manifests/kafka/kafka-topics.yaml
+kubectl --context k3d-dev -n dev get kafka,kafkanodepool,kafkatopic,pvc
 ```
 
-단일 dual-role broker/controller, 10Gi local-path PVC (`deleteClaim: false`), 내부 plaintext bootstrap `finance-kafka-kafka-bootstrap:9092`.
+단일 dual-role broker/controller, 10Gi local-path PVC (`deleteClaim: false`), 내부 plaintext bootstrap
+`finance-kafka-kafka-bootstrap.dev.svc.cluster.local:9092`를 사용한다.
 개발용이며 broker 중단 시 가용성은 없다. 모든 broker/Connect internal-topic replication factor와 min ISR은 1이다.
 `article-gold`는 선언형 KafkaTopic으로 1 partition/1 replica, 7일 보관한다.
 Connect internal topics는 worker가 명시적 AdminClient create로 생성하며 auto topic creation 비활성화와 충돌하지 않는다.
+
+[Argo CD Application](../../deploy/gitops/dev/kafka-application.yaml)은 위 세 파일만 관리한다.
+`main`에 구성 변경을 반영한 뒤 Application을 등록하면 Kafka와 토픽을 Git에서 동기화할 수 있다.
 
 ## 이미지와 안전한 활성화
 
@@ -62,4 +71,4 @@ sink는 Article을 article_id로 MERGE하고 `source_version`이 현재 값보�
 `configs/neo4j/constraints.cypher`의 uniqueness constraints를 activation 전에 적용해야 동시 writer에서도 중복 키가 생기지 않는다.
 외부 writer는 이 버전/관계 계약을 준수해야 한다. 유효성 검증 실패는 tolerance=none으로 task를 중지시킨다. 잘못된 record를 조용히 건너뛰는 정책은 없다.
 
-정적 검토는 YAML/계약 수준이며 브로커 기동, plugin class loading, Cypher 실행, 재전송/순서 뒤집힘 통합 검증은 이후 단계다.
+Connect 플러그인 로딩, Cypher 실행, 재전송·순서 뒤집힘은 Connect 활성화 후 검증한다.

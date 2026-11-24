@@ -3,7 +3,7 @@
 기사 데이터를 수집·정제하고 Neo4j 그래프로 제공하기 위한 로컬 데이터 플랫폼이다.
 Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 
-2026-11-24 조회 기준으로 Headlamp, Jenkins, Argo CD와 K3s 시스템 서비스가 실행 중이다.
+2026-11-24 조회 기준으로 Headlamp, Jenkins, Argo CD, 단일 Kafka 브로커와 K3s 시스템 서비스가 실행 중이다.
 기존 `finance-platform` 네임스페이스를 삭제하고 앱 배포 환경을 `dev`·`stage`·`prod`로 분리했다.
 이전 데이터 스택의 실행·검증 결과는 [인프라 실행 기록](configs/runtime/VALIDATION.md)에 있다.
 
@@ -15,10 +15,11 @@ Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 | Jenkins | 2.580.2, chart 5.13.3 | `jenkins` | Ready, `main` 검증 빌드 성공 |
 | Argo CD | 3.6.1, chart 10.18.0 | `argocd` | Ready, `dev` 검증 앱 `Synced / Healthy` |
 | Traefik | 3.6.12 | `kube-system` | Ready |
+| Strimzi / Kafka | 0.51.0 / 4.2.0 | `dev` | 단일 KRaft 브로커, `article-gold` 토픽 준비 |
 
-조회 당시 시스템을 포함한 실행 중인 Pod 12개가 모두 Ready였다. `stage`와 `prod`는
-네임스페이스와 Argo CD 배포 프로젝트가 준비되어 있다. PostgreSQL, Garage, Iceberg REST,
-JupyterLab, Airflow, Neo4j, Kafka 및 기사 파이프라인은 현재 클러스터에 미배포 상태다.
+`stage`와 `prod`는 네임스페이스와 Argo CD 배포 프로젝트가 준비되어 있다.
+PostgreSQL, Garage, Iceberg REST, JupyterLab, Airflow, Neo4j, Kafka Connect 및 기사
+파이프라인은 현재 클러스터에 미배포 상태다.
 데이터 스택의 저장소 버전과 이전 `finance-platform` 검증 내역은 아래에 기록한다.
 
 | 구성 | 저장소 버전 및 상태 |
@@ -26,7 +27,7 @@ JupyterLab, Airflow, Neo4j, Kafka 및 기사 파이프라인은 현재 클러스
 | PostgreSQL / Garage / Iceberg REST | 17.11 / 2.4.1 / 1.11.0, 이전 환경에서 연결 검증 |
 | Spark / JupyterLab | 4.1.2 / 4.4.9, 이전 환경에서 Spark Local 실행 검증 |
 | Airflow / Neo4j | 3.0.2 (chart 1.18.0) / 5.26.32, 이전 환경에서 worker 실행 및 Bolt 조회 검증 |
-| Strimzi / Kafka / Connect | 0.51.0 / 4.2.0 / Neo4j 플러그인 5.1.16, 설정 준비 |
+| Kafka Connect | 4.2.0 / Neo4j 플러그인 5.1.16, 비활성 템플릿 준비 |
 | Bronze→Silver / Silver→Gold | Python 3.13.14 / Spark 4.1.2, 코드와 비활성 배포 템플릿 준비 |
 
 ## 아키텍처
@@ -120,7 +121,7 @@ Gold는 `(article_id, ont_version)`별 한 번 저장한다. 이미 분석한 �
 | StorageClass | `local-path`, RWO |
 | 네트워크 | 내부 ClusterIP Service, UI는 Traefik Ingress와 Mac 루프백 포트로 접속 |
 
-현재 PVC는 `jenkins/jenkins` 한 개로, 요청 용량은 10Gi이고 `Bound` 상태다.
+현재 `jenkins/jenkins`와 `dev/data-0-finance-kafka-dual-role-0` PVC는 각각 10Gi이고 `Bound` 상태다.
 아래 표는 이전 `finance-platform` 환경의 저장소 구성이다.
 
 | 이전 PVC | 요청 용량 | 저장 내용 |
@@ -252,7 +253,7 @@ docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 
 
 ## 남은 작업
 
-1. Strimzi CRD와 클러스터 RBAC를 검토·승인한 뒤 Operator → Kafka → Connect 순으로 설치하고 개별 검증한다.
+1. `dev`의 Strimzi, 단일 Kafka 브로커와 `article-gold` 토픽 구성을 준비했다. Neo4j와 인증 Secret을 준비한 뒤 Kafka Connect를 활성화하고 통합 검증한다.
 2. 기사 수집·Gold 발행 코드를 구현한다. 현재 로컬 업무 이미지는 필요할 때 Docker Hub에 게시한다.
 3. Airflow에 DAG·Job 템플릿·업무 RBAC를 연결하고 수집 Job부터 수동 검증한다.
 4. Gemini Secret과 실제 호출 범위를 준비하고 모델 응답·비용·쿼터 및 두 작업의 동시 실행 자원을 검증한다.
