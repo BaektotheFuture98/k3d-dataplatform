@@ -1,5 +1,8 @@
 # KubernetesExecutor 전환
 
+이 문서는 2026-11-13 `finance-platform`의 전환 기록이다. 2026-11-27부터 Airflow와
+worker는 `pipelines`에 배포하며, 재배포 기준은 [Airflow 운영 안내](README.md)에 있다.
+
 2026-11-13 Airflow 3.0.2 / chart 1.18.0 / Kubernetes provider 10.24.0의
 LocalExecutor를 KubernetesExecutor로 전환했다. 태스크마다 worker Pod를 생성한다.
 이미지와 PostgreSQL 및 기존 Secret을 재사용하며 동시 실행 한도는 2개다.

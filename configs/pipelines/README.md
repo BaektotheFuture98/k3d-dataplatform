@@ -1,10 +1,10 @@
 # Article 데이터 파이프라인
 
 기존 `data_platform` 프로젝트의 Bronze→Silver, Silver→Gold 코드를 k3d 용으로 이식했다.
-2026-11-24 기준 현재 클러스터에 두 파이프라인은 미배포 상태다. 템플릿의 기본값은
-두 Deployment 모두 `replicas: 0`이며 실제 Gemini 호출은 하지 않았다.
-아래 `finance-platform` 명령은 이전 환경 기준이다. 새 환경에서 적용하기 전에 리소스의
-네임스페이스, 공유 Spark 설정, 데이터 스택의 서비스 DNS와 Secret 참조를 검토한다.
+두 Spark Deployment는 `pipelines`에 등록돼 있고 모두 `replicas: 0`이다.
+공유 `spark-config`는 `pipelines`에 있으며 Iceberg REST와 Garage는 `lakehouse`에 있다.
+2026-11-27 일회성 Spark Job으로 네 테이블의 스키마와 파티션을 검증했다. 상시 처리와
+실제 Gemini 호출은 시작하지 않았다.
 기사 수집기·Gold Publisher·Kafka/Neo4j 업무 적재는 이번 구현 범위에 포함하지 않는다.
 
 ## 처리 흐름
@@ -97,8 +97,8 @@ k3d image import finance-platform/article-bronze-to-silver:v1 finance-platform/a
 ```sh
 python3 scripts/render-manifests.py --source deploy/k8s/manifests/pipelines/bronze-to-silver --values configs/platform-images.env --output deploy/rendered-runtime/bronze-to-silver-v1
 python3 scripts/render-manifests.py --source deploy/k8s/manifests/pipelines/silver-to-gold --values configs/platform-images.env --output deploy/rendered-runtime/silver-to-gold-v1
-kubectl --context k3d-dev -n finance-platform apply --dry-run=server -f deploy/rendered-runtime/bronze-to-silver-v1 -f deploy/rendered-runtime/silver-to-gold-v1
-kubectl --context k3d-dev -n finance-platform apply -f deploy/rendered-runtime/bronze-to-silver-v1 -f deploy/rendered-runtime/silver-to-gold-v1
+kubectl --context k3d-dev -n pipelines apply --dry-run=server -f deploy/rendered-runtime/bronze-to-silver-v1 -f deploy/rendered-runtime/silver-to-gold-v1
+kubectl --context k3d-dev -n pipelines apply -f deploy/rendered-runtime/bronze-to-silver-v1 -f deploy/rendered-runtime/silver-to-gold-v1
 ```
 
 디렉터리 전체를 재귀 apply하지 않는다. 수집 Job과 오프라인 검증 Job은 명시적 `create` 대상이다.
@@ -111,7 +111,7 @@ ConfigMap 변경 후 이미 실행 중인 프로세스에는 재시작이 필요
 docker build --platform linux/arm64 -f docker/pipelines/Dockerfile --target test -t finance-platform/article-pipelines-test:v2 .
 docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 finance-platform/article-pipelines-test:v2
 k3d image import finance-platform/article-pipelines-test:v2 --cluster dev
-kubectl --context k3d-dev -n finance-platform create -f deploy/k8s/manifests/pipelines/offline-smoke-job.yaml
+kubectl --context k3d-dev -n pipelines create -f deploy/k8s/manifests/pipelines/offline-smoke-job.yaml
 ```
 
 컨테이너 테스트는 원본 Bronze 변환, 환경변수 검증, 결정적 ID, 그래프 참조·SHACL 및 요청 크기 제한을 검사한다.
@@ -127,11 +127,11 @@ Kubernetes 검증은 고유한 `pipeline_smoke_<UUID>` namespace의 테이블과
 다음은 이후 운영자가 실행할 예시이며 이번 작업에서는 실행하지 않는다.
 
 ```sh
-kubectl --context k3d-dev -n finance-platform create secret generic gemini-credentials --from-file=api-key=/secure/path/gemini-api-key
+kubectl --context k3d-dev -n pipelines create secret generic gemini-credentials --from-file=api-key=/secure/path/gemini-api-key
 # 자원과 입력 데이터·모델·버전을 확인한 뒤 필요한 작업을 하나씩 활성화
-kubectl --context k3d-dev -n finance-platform scale deployment/bronze-to-silver --replicas=1
+kubectl --context k3d-dev -n pipelines scale deployment/bronze-to-silver --replicas=1
 # Silver→Gold 활성화는 실제 Gemini 요청과 비용을 발생시킬 수 있음
-kubectl --context k3d-dev -n finance-platform scale deployment/silver-to-gold --replicas=1
+kubectl --context k3d-dev -n pipelines scale deployment/silver-to-gold --replicas=1
 ```
 
 Secret이 이미 있으면 위 생성 명령으로 교체하지 말고 별도 키 갱신 절차를 사용한다.

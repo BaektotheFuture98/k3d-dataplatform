@@ -4,7 +4,7 @@ import json
 import secrets
 import subprocess
 
-KUBECTL = ["kubectl", "--context", "k3d-dev", "-n", "finance-platform"]
+KUBECTL = ["kubectl", "--context", "k3d-dev", "-n", "lakehouse"]
 
 
 def exists(kind, name):
@@ -24,7 +24,7 @@ def main():
     secret = {
         "apiVersion": "v1", "kind": "Secret", "type": "Opaque",
         "metadata": {
-            "name": "postgres-credentials", "namespace": "finance-platform",
+            "name": "postgres-credentials", "namespace": "lakehouse",
             "labels": {
                 "app.kubernetes.io/name": "postgres",
                 "app.kubernetes.io/component": "database",

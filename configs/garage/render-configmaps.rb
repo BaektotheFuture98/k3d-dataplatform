@@ -9,7 +9,7 @@ require 'yaml'
   resource = {
     'apiVersion' => 'v1', 'kind' => 'ConfigMap',
     'metadata' => {
-      'name' => name, 'namespace' => 'finance-platform',
+      'name' => name, 'namespace' => 'lakehouse',
       'labels' => {
         'app.kubernetes.io/name' => 'garage',
         'app.kubernetes.io/component' => 'object-storage',

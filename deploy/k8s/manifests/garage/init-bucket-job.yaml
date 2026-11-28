@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: garage-s3-check-
-  namespace: finance-platform
+  namespace: lakehouse
   labels:
     app.kubernetes.io/name: garage-s3-check
     app.kubernetes.io/component: verification
@@ -27,7 +27,7 @@ spec:
           image: finance-platform/s3-check:boto3-1.40.59-v1
           imagePullPolicy: Never
           env:
-            - {name: S3_ENDPOINT, value: 'http://garage.finance-platform.svc.cluster.local:3900'}
+            - {name: S3_ENDPOINT, value: 'http://garage.lakehouse.svc.cluster.local:3900'}
             - {name: S3_BUCKET, value: warehouse}
             - {name: AWS_DEFAULT_REGION, value: garage}
             - {name: AWS_EC2_METADATA_DISABLED, value: 'true'}

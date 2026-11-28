@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: postgres-verify-
-  namespace: finance-platform
+  namespace: lakehouse
   labels:
     app.kubernetes.io/name: postgres-verify
     app.kubernetes.io/component: verification
@@ -29,7 +29,7 @@ spec:
           args:
             - |
               set -o pipefail
-              export PGHOST=postgres.finance-platform.svc.cluster.local PGPORT=5432 PGCONNECT_TIMEOUT=5
+              export PGHOST=postgres.lakehouse.svc.cluster.local PGPORT=5432 PGCONNECT_TIMEOUT=5
               verify_user() {
                 export PGUSER="$1" PGDATABASE="$2" PGPASSWORD
                 PGPASSWORD="$(cat "/run/secrets/postgres/$3")"

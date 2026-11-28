@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: article-pipeline-offline-
-  namespace: finance-platform
+  namespace: pipelines
   labels:
     app.kubernetes.io/name: article-pipeline-offline
     app.kubernetes.io/part-of: finance-platform

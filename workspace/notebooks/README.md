@@ -4,8 +4,8 @@
 `workspace/notebooks/pipelines/price_medallion/medallion.ipynb`를 기준으로 작성했다.
 이전 `finance-platform`에서 Iceberg REST Catalog와 Garage를 사용해 실행했다.
 
-2026-11-24 기준 현재 Jupyter는 미배포 상태다. 저장소에서 위 노트북을 열어
-보존한 실행 결과를 확인할 수 있다. 다시 실행하려면 데이터 스택과 Jupyter를 준비한다.
+Jupyter는 미배포 상태다. 2026-11-27에는 `pipelines`의 일회성 Spark Job이 같은 SQL을
+사용해 `lakehouse`에 테이블 4개를 구성했다. 노트북에는 이전 실행 결과가 보존돼 있다.
 
 ## 생성한 테이블
 
@@ -31,17 +31,17 @@ JDBC Catalog 등록 정보는 PostgreSQL에 저장된다.
 노트북에 Secret 값을 직접 입력하지 않는다. 마지막 셀은 Spark를 종료해 자원을 반환한다.
 
 저장소의 파일을 새 Jupyter 환경에 업로드할 때는 `sql/`도 함께 전달해야 한다.
-다음은 이전 환경의 예시다. 새 환경에서는 먼저 배포된 Jupyter와 대상 네임스페이스를
-확인한다. 업로드하면 대상의 동명 파일을 덮어쓴다.
+다음은 Jupyter를 `pipelines`에 배포한 후 사용할 예시다. 업로드하면 대상의 동명 파일을
+덮어쓴다.
 
 ```sh
-tar -C workspace -cf - notebooks | kubectl --context k3d-dev -n finance-platform exec -i deployment/jupyter -- tar -C /workspace -xf -
+tar -C workspace -cf - notebooks | kubectl --context k3d-dev -n pipelines exec -i deployment/jupyter -- tar -C /workspace -xf -
 ```
 
 Pod 안에서 노트북을 실행하는 예시:
 
 ```sh
-kubectl --context k3d-dev -n finance-platform exec deployment/jupyter -- \
+kubectl --context k3d-dev -n pipelines exec deployment/jupyter -- \
   python3 -m jupyter nbconvert --execute --to notebook --inplace \
   --ExecutePreprocessor.timeout=180 /workspace/notebooks/article_medallion.ipynb
 ```

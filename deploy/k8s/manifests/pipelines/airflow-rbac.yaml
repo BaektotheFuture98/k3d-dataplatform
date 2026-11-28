@@ -3,7 +3,7 @@
   "kind": "ServiceAccount",
   "metadata": {
     "name": "airflow-jobs",
-    "namespace": "finance-platform",
+    "namespace": "pipelines",
     "labels": {
       "app.kubernetes.io/name": "airflow-jobs",
       "app.kubernetes.io/part-of": "finance-platform",
@@ -18,7 +18,7 @@
   "kind": "Role",
   "metadata": {
     "name": "airflow-jobs",
-    "namespace": "finance-platform",
+    "namespace": "pipelines",
     "labels": {
       "app.kubernetes.io/name": "airflow-jobs",
       "app.kubernetes.io/part-of": "finance-platform",
@@ -77,7 +77,7 @@
   "kind": "RoleBinding",
   "metadata": {
     "name": "airflow-jobs",
-    "namespace": "finance-platform",
+    "namespace": "pipelines",
     "labels": {
       "app.kubernetes.io/name": "airflow-jobs",
       "app.kubernetes.io/part-of": "finance-platform",
@@ -89,7 +89,7 @@
     {
       "kind": "ServiceAccount",
       "name": "airflow-jobs",
-      "namespace": "finance-platform"
+      "namespace": "pipelines"
     }
   ],
   "roleRef": {

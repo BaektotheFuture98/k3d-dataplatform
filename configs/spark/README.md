@@ -1,8 +1,10 @@
 # Catalog / Spark 파일 구성
 
-2026-11-24 기준 Iceberg REST와 Jupyter는 새 환경에 미배포 상태다. 아래 주소와 설정은
-이전 `finance-platform` 실행 기록이다. 재배포 전에 Jupyter, PostgreSQL, Garage와
-Catalog의 네임스페이스, 서비스 DNS와 Secret 참조를 함께 검토한다.
+Iceberg REST와 Garage는 `lakehouse`에 있다. `pipelines`의 Spark는
+`iceberg-rest.lakehouse.svc.cluster.local:8181`과 `garage.lakehouse.svc.cluster.local:3900`에
+연결한다. `configs/prepare-secrets.py --component spark --apply`는 Spark에 필요한 S3 키만
+`pipelines`의 Secret에 복사한다. Jupyter는 미배포 상태다. 아래 이전 환경의 실행 기록은
+당시 검증 결과를 보존한다.
 
 > 2026-10-18 실행 업데이트: 두 ARM64 이미지를 저장소 Dockerfile로 빌드하고 k3d `dev`에 import했다. 아래는 최초 정적 준비 시점 기록이며, 실제 빌드 결과·수정·검증은 [runtime 실행 기록](../runtime/catalog-spark-notes.md)을 참조한다.
 

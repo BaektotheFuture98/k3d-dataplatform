@@ -2,7 +2,7 @@
 """Provision FAB Admin using stdin-only credentials; never rotate existing users.
 
 Usage: python3 configs/runtime/provision-airflow-admin.py --pod AIRFLOW_API_SERVER_POD
-Requires kubectl access to k3d-dev / finance-platform. Does not display credentials.
+Requires kubectl access to k3d-dev / pipelines. Does not display credentials.
 """
 import argparse
 import base64
@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 
-BASE = ["kubectl", "--context", "k3d-dev", "-n", "finance-platform"]
+BASE = ["kubectl", "--context", "k3d-dev", "-n", "pipelines"]
 STAGE = "startup"
 REMOTE = r'''
 import contextlib, io, json, sys
@@ -89,7 +89,7 @@ def main():
             raise RuntimeError("User exists without airflow-admin Secret; refusing to invent or rotate its password")
         password = secrets.token_urlsafe(32)
         manifest = {"apiVersion": "v1", "kind": "Secret", "metadata": {
-            "name": "airflow-admin", "namespace": "finance-platform",
+            "name": "airflow-admin", "namespace": "pipelines",
             "labels": {
                 "app.kubernetes.io/name": "airflow",
                 "app.kubernetes.io/component": "credentials",

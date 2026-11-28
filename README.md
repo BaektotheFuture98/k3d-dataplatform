@@ -3,8 +3,8 @@
 기사 데이터를 수집·정제하고 Neo4j 그래프로 제공하기 위한 로컬 데이터 플랫폼이다.
 Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 
-2026-11-24 조회 기준으로 Headlamp, Jenkins, Argo CD, 단일 Kafka 브로커와 K3s 시스템 서비스가 실행 중이다.
-기존 `finance-platform` 네임스페이스를 삭제하고 앱 배포 환경을 `dev`·`stage`·`prod`로 분리했다.
+2026-11-27 기준 데이터 저장소는 `lakehouse`, 데이터 작업과 Airflow는 `pipelines`에 둔다.
+기존 `finance-platform`은 삭제됐으며, `dev`는 Kafka와 Headlamp를 운영한다.
 이전 데이터 스택의 실행·검증 결과는 [인프라 실행 기록](configs/runtime/VALIDATION.md)에 있다.
 
 ## 현재 클러스터 상태
@@ -16,10 +16,12 @@ Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 | Argo CD | 3.6.1, chart 10.18.0 | `argocd` | Ready, `dev` 검증 앱 `Synced / Healthy` |
 | Traefik | 3.6.12 | `kube-system` | Ready |
 | Strimzi / Kafka | 0.51.0 / 4.2.0 | `dev` | 단일 KRaft 브로커, `article-gold` 토픽 준비 |
+| PostgreSQL / Garage / Iceberg REST | 17.11 / 2.4.1 / 1.11.0 | `lakehouse` | Ready, Iceberg 테이블 4개 검증 |
+| Airflow | 3.0.2, chart 1.18.0 | `pipelines` | KubernetesExecutor 구성 |
+| Bronze→Silver / Silver→Gold | Spark 4.1.2 | `pipelines` | Deployment 등록, 각각 `replicas: 0` |
 
 `stage`와 `prod`는 네임스페이스와 Argo CD 배포 프로젝트가 준비되어 있다.
-PostgreSQL, Garage, Iceberg REST, JupyterLab, Airflow, Neo4j, Kafka Connect 및 기사
-파이프라인은 현재 클러스터에 미배포 상태다.
+JupyterLab, Neo4j, Kafka Connect, 기사 수집기와 Publisher는 미배포 상태다.
 데이터 스택의 저장소 버전과 이전 `finance-platform` 검증 내역은 아래에 기록한다.
 
 | 구성 | 저장소 버전 및 상태 |
@@ -93,7 +95,8 @@ Gold는 `(article_id, ont_version)`별 한 번 저장한다. 이미 분석한 �
 ## Article 테이블
 
 기존 `data_platform` 노트북 설계를 기준으로 다음 Iceberg 테이블을 생성했다.
-2026-10-18 생성·재실행 검증 시 네 테이블 모두 0행이며 업무 파이프라인은 실행하지 않았다.
+2026-11-27 `pipelines`에서 실행한 일회성 Spark Job으로 `lakehouse`에 테이블 4개를
+생성하고 스키마, 파티션, 행 수 0건을 검증했다.
 
 | 테이블 | 컬럼 수 | 파티션 |
 | --- | --- | --- |
@@ -103,7 +106,7 @@ Gold는 `(article_id, ont_version)`별 한 번 저장한다. 이미 분석한 �
 | `lakehouse.ops.ontology_batch_job` | 9 | 배치 생성일 |
 
 [테이블 구성 노트북](workspace/notebooks/article_medallion.ipynb)에서 생성 SQL과 검증 출력을
-확인할 수 있다. 다시 실행하려면 Jupyter, Iceberg REST, Garage 등 의존 서비스를 먼저 준비한다.
+확인할 수 있다. 같은 SQL은 `pipelines`의 Spark Job에서도 실행할 수 있다.
 소스와 원본 대비 변경 사항은 [노트북 안내](workspace/notebooks/README.md)에 있다.
 원본에 생성 정의가 없는 `ops.article_pipeline_state`는 생성하지 않았다.
 
@@ -117,11 +120,14 @@ Gold는 `(article_id, ont_version)`별 한 번 저장한다. 이미 분석한 �
 | Kubernetes | K3s `v1.35.5+k3s1` |
 | Colima VM | 8 CPU, 메모리 25.6GiB, 디스크 183GiB (`colima list` 표시값) |
 | Kubernetes 노드 자원 | 8 CPU, 메모리 약 25.0GiB |
-| 네임스페이스 | 앱 `dev`·`stage`·`prod`, CI/CD `jenkins`·`argocd` |
+| 네임스페이스 | `lakehouse` 저장소, `pipelines` 데이터 작업, `dev` Kafka·Headlamp, `jenkins`·`argocd` CI/CD |
 | StorageClass | `local-path`, RWO |
 | 네트워크 | 내부 ClusterIP Service, UI는 Traefik Ingress와 Mac 루프백 포트로 접속 |
 
-현재 `jenkins/jenkins`와 `dev/data-0-finance-kafka-dual-role-0` PVC는 각각 10Gi이고 `Bound` 상태다.
+현재 PostgreSQL·Garage는 `lakehouse`의 각 10Gi PVC를 사용한다. Airflow는 `pipelines`의
+DAG 1Gi·로그 2Gi PVC를 사용한다. Jenkins와 Kafka는 각각 기존 10Gi PVC를 사용한다.
+전환 이전의 `dev` PostgreSQL·Garage·Iceberg REST는 중지했다. `dev`의 기존 PVC와
+배포 설정은 롤백용으로 보존한다.
 아래 표는 이전 `finance-platform` 환경의 저장소 구성이다.
 
 | 이전 PVC | 요청 용량 | 저장 내용 |
@@ -155,18 +161,15 @@ kubectl --context k3d-dev get deployments,statefulsets,pods,pvc -A
 kubectl --context k3d-dev -n argocd get application,appproject
 ```
 
-Airflow와 Jupyter는 Ingress와 백엔드가 미배포 상태다. 2026-11-24 로컬 Traefik에서
-두 주소 모두 404를 반환했다. [이전 접속 설정과 검증 기록](configs/ingress/README.md)에
-재구성 시 참고할 경로가 있다.
+Airflow UI는 `kubectl --context k3d-dev -n pipelines port-forward svc/airflow-api-server 18080:8080`으로
+접속한다. Airflow·Jupyter용 Ingress는 이전 배포 기록으로 [접속 문서](configs/ingress/README.md)에 있다.
 
-| 서비스 | 이전 데이터 스택의 내부 접속 계약 |
+| 서비스 | 클러스터 내부 주소 |
 | --- | --- |
-| PostgreSQL | `postgres:5432` |
-| Garage S3 | `http://garage:3900`, region `garage`, path-style |
-| Iceberg REST | `http://iceberg-rest:8181` |
-| Airflow | `http://airflow-api-server:8080` |
-| JupyterLab | `http://jupyter:8888` |
-| Neo4j | Bolt `neo4j:7687`, HTTP `neo4j:7474` |
+| PostgreSQL | `postgres.lakehouse.svc:5432` |
+| Garage S3 | `http://garage.lakehouse.svc:3900`, region `garage`, path-style |
+| Iceberg REST | `http://iceberg-rest.lakehouse.svc:8181` |
+| Airflow | `http://airflow-api-server.pipelines.svc:8080` |
 
 Airflow 관리자 계정은 `airflow-admin`, Jupyter 토큰은 `jupyter-auth`의 `token`,
 Neo4j 인증은 `neo4j-auth` Secret에서 관리한다.
@@ -232,8 +235,8 @@ python3 scripts/render-manifests.py --source deploy/k8s \
 Renderer는 파일만 생성하며 배포하지 않는다. 기존 출력 디렉터리는 덮어쓰지 않는다.
 **manifest 또는 렌더링 출력 전체를 재귀 apply하지 않는다.**
 검증용 Job과 미배포 업무 리소스가 함께 있으므로 서비스별 파일을 선택해 dry-run 후 적용한다.
-이전 템플릿에는 `metadata.namespace: finance-platform`, 서비스 DNS, Secret 및 PVC 참조가
-남아 있다. 재배포할 환경을 정한 뒤 이 참조를 함께 검토하고 필요한 자격증명과 저장소를 준비한다.
+레이크하우스와 파이프라인 템플릿은 각각 `lakehouse`와 `pipelines`를 사용한다. 이전 UI
+Ingress 등 아직 이전하지 않은 템플릿의 네임스페이스, DNS 및 Secret 참조는 적용 전에 검토한다.
 이전 빌드·import·배포 명령은 [실행 기록](configs/runtime/VALIDATION.md)에 있다.
 
 정적 설정 검사는 다음과 같다.

@@ -1,7 +1,15 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: finance-platform
+  name: lakehouse
   labels:
-    app.kubernetes.io/name: finance-platform
+    app.kubernetes.io/name: lakehouse
+    app.kubernetes.io/part-of: finance-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pipelines
+  labels:
+    app.kubernetes.io/name: pipelines
     app.kubernetes.io/part-of: finance-platform

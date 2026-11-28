@@ -4,6 +4,10 @@
 `dev`, `stage`, `prod`는 애플리케이션 배포 대상이다. Jenkins의 Kubernetes agent는
 `jenkins`에서 작업하고, Argo CD는 Git에서 선언을 읽어 각 환경으로 동기화한다.
 
+`platform-data` AppProject는 `lakehouse`와 `pipelines`만 배포 대상으로 허용한다.
+데이터 기반과 Airflow의 첫 이전은 Kubernetes와 Helm으로 직접 적용했으며, 현재 Argo CD의
+검증 앱은 기존 `platform-dev-smoke`다.
+
 | 릴리스 | Helm 저장소 | 차트 버전 |
 | --- | --- | --- |
 | Argo CD | `https://argoproj.github.io/argo-helm` | `10.18.0` |

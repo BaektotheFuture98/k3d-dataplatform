@@ -26,6 +26,21 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
+  name: platform-data
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/BaektotheFuture98/k3d-dataplatform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: lakehouse
+    - server: https://kubernetes.default.svc
+      namespace: pipelines
+  clusterResourceWhitelist: []
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
   name: platform-stage
   namespace: argocd
 spec:

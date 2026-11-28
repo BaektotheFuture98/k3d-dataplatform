@@ -3,7 +3,7 @@
   "kind": "ConfigMap",
   "metadata": {
     "name": "silver-to-gold-config",
-    "namespace": "finance-platform",
+    "namespace": "pipelines",
     "labels": {
       "app.kubernetes.io/part-of": "finance-platform",
       "app.kubernetes.io/component": "pipeline",

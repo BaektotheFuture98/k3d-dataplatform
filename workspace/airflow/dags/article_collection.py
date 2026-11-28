@@ -32,7 +32,7 @@ with DAG(
     ConfiguredCollectorJobOperator(
         task_id='collect_articles',
         name='article-collector',
-        namespace='finance-platform',
+        namespace='pipelines',
         # Deliver this file alongside the DAG in the custom Airflow image.
         job_template_file='/opt/airflow/job-templates/article-collector.yaml',
         in_cluster=True,

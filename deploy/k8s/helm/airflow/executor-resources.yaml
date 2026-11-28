@@ -2,14 +2,14 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: airflow-executor-worker
-  namespace: finance-platform
+  namespace: pipelines
 automountServiceAccountToken: false
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: airflow-executor-pod-launcher
-  namespace: finance-platform
+  namespace: pipelines
 rules:
   - apiGroups: ['']
     resources: [pods]
@@ -25,11 +25,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: airflow-executor-pod-launcher
-  namespace: finance-platform
+  namespace: pipelines
 subjects:
   - kind: ServiceAccount
     name: airflow-scheduler
-    namespace: finance-platform
+    namespace: pipelines
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -39,7 +39,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: airflow-executor-log-reader
-  namespace: finance-platform
+  namespace: pipelines
 rules:
   - apiGroups: ['']
     resources: [pods, pods/log]
@@ -49,11 +49,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: airflow-executor-log-reader
-  namespace: finance-platform
+  namespace: pipelines
 subjects:
   - kind: ServiceAccount
     name: airflow-api-server
-    namespace: finance-platform
+    namespace: pipelines
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -63,7 +63,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: airflow-executor-dags
-  namespace: finance-platform
+  namespace: pipelines
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: local-path
@@ -74,7 +74,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: airflow-executor-logs
-  namespace: finance-platform
+  namespace: pipelines
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: local-path

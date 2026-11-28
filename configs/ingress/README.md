@@ -1,7 +1,8 @@
 # Airflow·Jupyter 접속 구성 기록
 
-2026-11-24 기준 Airflow·Jupyter와 `platform-ui` Ingress는 미배포 상태다. 로컬 Traefik에서
-두 호스트는 404를 반환한다. 지금 실행 중인 Headlamp 접속은 [Headlamp 운영 안내](../headlamp/README.md)를 참고한다.
+`platform-ui` Ingress와 Jupyter는 미배포 상태다. `pipelines`의 Airflow는
+`kubectl --context k3d-dev -n pipelines port-forward svc/airflow-api-server 18080:8080`으로
+접속한다. Headlamp 주소는 [Headlamp 운영 안내](../headlamp/README.md)를 참고한다.
 아래 주소와 적용 명령은 이전 `finance-platform` 환경에서 사용한 기록이다. 재배포 시 대상 환경과
 두 매니페스트의 네임스페이스, 백엔드 Service 이름을 함께 맞춘다.
 

@@ -27,7 +27,13 @@ Dir['deploy/k8s/**/*.yaml'].sort.each do |path|
       next if doc.nil?
       documents += 1
       next unless path.start_with?('deploy/k8s/manifests/') && doc.is_a?(Hash) && doc['kind']
-      expected_namespace = path.start_with?('deploy/k8s/manifests/kafka/') ? 'dev' : 'finance-platform'
+      service = path.split('/')[3]
+      expected_namespace = case service
+                           when 'postgres', 'garage', 'iceberg-rest' then 'lakehouse'
+                           when 'pipelines', 'spark' then 'pipelines'
+                           when 'kafka' then 'dev'
+                           else 'finance-platform'
+                           end
       errors << "#{path}: namespace must be #{expected_namespace}" unless doc.dig('metadata', 'namespace') == expected_namespace
       labels = doc.dig('metadata', 'labels') || {}
       %w[name component part-of managed-by].each do |key|

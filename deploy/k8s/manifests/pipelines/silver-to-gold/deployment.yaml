@@ -3,7 +3,7 @@
   "kind": "Deployment",
   "metadata": {
     "name": "silver-to-gold",
-    "namespace": "finance-platform",
+    "namespace": "pipelines",
     "labels": {
       "app.kubernetes.io/name": "silver-to-gold",
       "app.kubernetes.io/part-of": "finance-platform",

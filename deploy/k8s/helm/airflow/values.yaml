@@ -1,4 +1,4 @@
-# Official apache-airflow/airflow chart 1.18.0; namespace finance-platform.
+# Official apache-airflow/airflow chart 1.18.0; namespace pipelines.
 # Infrastructure-only image; contains no project DAGs.
 # Repository/tag are derived from the selected AIRFLOW_IMAGE.
 airflowVersion: '3.0.2'
@@ -87,7 +87,7 @@ config:
     parallelism: 2
     execution_api_server_url: http://airflow-api-server:8080/execution/
   kubernetes_executor:
-    namespace: finance-platform
+    namespace: pipelines
     in_cluster: 'True'
     multi_namespace_mode: 'False'
     delete_worker_pods: 'True'

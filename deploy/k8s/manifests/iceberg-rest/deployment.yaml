@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: iceberg-rest
-  namespace: finance-platform
+  namespace: lakehouse
   labels: &labels
     app.kubernetes.io/name: iceberg-rest
     app.kubernetes.io/part-of: finance-platform
@@ -58,7 +58,7 @@ spec:
             - name: CATALOG_IO__IMPL
               value: org.apache.iceberg.aws.s3.S3FileIO
             - name: CATALOG_S3_ENDPOINT
-              value: http://garage.finance-platform.svc.cluster.local:3900
+              value: http://garage.lakehouse.svc.cluster.local:3900
             - name: CATALOG_S3_PATH__STYLE__ACCESS
               value: "true"
             - name: CATALOG_CLIENT_REGION

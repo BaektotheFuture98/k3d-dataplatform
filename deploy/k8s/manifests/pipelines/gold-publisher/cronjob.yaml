@@ -3,7 +3,7 @@
   "kind": "CronJob",
   "metadata": {
     "name": "gold-publisher",
-    "namespace": "finance-platform",
+    "namespace": "pipelines",
     "labels": {
       "app.kubernetes.io/name": "gold-publisher",
       "app.kubernetes.io/part-of": "finance-platform",
@@ -44,7 +44,7 @@
                 "env": [
                   {
                     "name": "AWS_ENDPOINT_URL",
-                    "value": "http://garage.finance-platform.svc.cluster.local:3900"
+                    "value": "http://garage.lakehouse.svc.cluster.local:3900"
                   },
                   {
                     "name": "AWS_REGION",
@@ -64,7 +64,7 @@
                   },
                   {
                     "name": "ICEBERG_CATALOG_URI",
-                    "value": "http://iceberg-rest:8181"
+                    "value": "http://iceberg-rest.lakehouse.svc.cluster.local:8181"
                   },
                   {
                     "name": "AWS_ACCESS_KEY_ID",
@@ -86,7 +86,7 @@
                   },
                   {
                     "name": "KAFKA_BOOTSTRAP_SERVERS",
-                    "value": "finance-kafka-kafka-bootstrap:9092"
+                    "value": "finance-kafka-kafka-bootstrap.dev.svc.cluster.local:9092"
                   },
                   {
                     "name": "KAFKA_TOPIC",

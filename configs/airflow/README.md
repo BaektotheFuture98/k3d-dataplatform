@@ -1,8 +1,12 @@
 # Airflow 파일 계약
 
-2026-11-24 기준 Airflow는 새 환경에 미배포 상태다. 아래 설정과 검증은 이전
-`finance-platform` 환경을 기준으로 한다. 재배포 전에 Helm values의 worker 네임스페이스,
-RBAC, PostgreSQL 연결과 DAG·로그 PVC를 대상 환경에 맞춘다.
+Airflow 컨트롤러와 KubernetesExecutor worker는 `pipelines`에 배포한다. 메타데이터는
+`postgres.lakehouse.svc.cluster.local:5432/airflow_meta`에 저장한다. DAG와 로그 PVC는
+`pipelines`에 있다. 업무 수집 DAG와 Job은 활성화하지 않았다.
+
+`pipelines`에서 재배포할 때 순서는 `airflow-metadata` Secret, `executor-resources.yaml`,
+렌더링한 Helm values다. 메타데이터 마이그레이션은 차트의 post-install/post-upgrade Job이
+수행한다. Helm 실행 후 API 서버, scheduler, DAG processor의 rollout을 확인한다.
 
 **저장소의 executor 설정은 KubernetesExecutor다.** 2026-11-13 전환했고, 별도 worker Pod에서
 검증 태스크 성공 및 Pod 삭제 후 로그 보존까지 확인했다.
@@ -23,7 +27,7 @@ Git sync는 비활성화했고 DAG/log PVC는 KubernetesExecutor 전환 때 연�
 Job template을 `/opt/airflow/job-templates/article-collector.yaml`에 전달하는 절차를 추가해야 한다.
 chart values만으로 로컬 파일이 전송되지 않는다.
 
-초기 LocalExecutor는 scheduler 안에서 task를 실행했으며 현재는 task별 worker Pod를 실행한다. 외부 PostgreSQL은 `postgres:5432`, DB `airflow_meta`, user `airflow_user`. 사전에 외부 Secret `airflow-metadata`의 **connection** 키에 URL-encoded password를 포함한 `postgresql://airflow_user:<encoded-password>@postgres:5432/airflow_meta` 연결 URL을 준비해야 한다. 비밀번호 원천은 `postgres-credentials/airflow-password`이며 Kubernetes가 서로 다른 Secret 키를 자동 조합하지 않는다. 실제 Secret 값이나 생성 명령은 여기에 넣지 않는다.
+초기 LocalExecutor는 scheduler 안에서 task를 실행했고, KubernetesExecutor는 task별 worker Pod를 실행한다. `python3 configs/prepare-secrets.py --component airflow --apply`는 `lakehouse`의 `postgres-credentials/airflow-password`로 `pipelines`의 `airflow-metadata/connection`을 생성한다. 비밀번호는 URL 인코딩하고 화면이나 파일로 출력하지 않는다.
 
 Chart 1.18.0 설치와 DB migration hook이 성공했다. 차트 기본 테스트 계정 생성은 끈다.
 `configs/runtime/provision-airflow-admin.py`로 누락된 Admin을 생성하고 `airflow-admin` Secret에
