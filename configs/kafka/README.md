@@ -1,6 +1,6 @@
 # Kafka / Connect files
 
-2026-11-24 구성은 `dev`의 Strimzi와 단일 KRaft Kafka 브로커, `article-gold` 토픽이다.
+`pipelines`에서 Strimzi와 단일 KRaft Kafka 브로커, `article-gold` 토픽을 운영한다.
 초기 배포는 데이터 수집·발행 없이 구성과 준비 상태만 확인한다. Connect와 Neo4j sink는
 활성화 절차에 사용할 템플릿으로 보관한다.
 
@@ -20,31 +20,31 @@
 
 ## 설치 및 조회
 
-Operator는 릴리스 네임스페이스인 `dev`만 감시한다 (`watchNamespaces: []`,
+Operator는 릴리스 네임스페이스인 `pipelines`만 감시한다 (`watchNamespaces: []`,
 `watchAnyNamespace: false`). 기존 Strimzi 0.51.0 CRD와 ClusterRole을 재사용한다.
 [cluster-bindings.yaml](../../deploy/k8s/helm/strimzi/cluster-bindings.yaml)은 기존 세
-ClusterRoleBinding을 `dev/strimzi-cluster-operator`에 연결한다. 새 클러스터에는 이 명령을
+ClusterRoleBinding을 `pipelines/strimzi-cluster-operator`에 연결한다. 새 클러스터에는 이 명령을
 실행하기 전에 동일 버전의 CRD와 ClusterRole을 준비해야 한다.
 
 ```sh
 kubectl --context k3d-dev apply -f deploy/k8s/helm/strimzi/cluster-bindings.yaml
 helm upgrade --install strimzi-cluster-operator strimzi-kafka-operator \
   --repo https://strimzi.io/charts/ --version 0.51.0 --kube-context k3d-dev \
-  -n dev --skip-crds -f deploy/k8s/helm/strimzi/values.yaml --wait --timeout 5m
-kubectl --context k3d-dev -n dev apply \
+  -n pipelines --skip-crds -f deploy/k8s/helm/strimzi/values.yaml --wait --timeout 5m
+kubectl --context k3d-dev -n pipelines apply \
   -f deploy/k8s/manifests/kafka/kafka-nodepool.yaml \
   -f deploy/k8s/manifests/kafka/kafka.yaml \
   -f deploy/k8s/manifests/kafka/kafka-topics.yaml
-kubectl --context k3d-dev -n dev get kafka,kafkanodepool,kafkatopic,pvc
+kubectl --context k3d-dev -n pipelines get kafka,kafkanodepool,kafkatopic,pvc
 ```
 
 단일 dual-role broker/controller, 10Gi local-path PVC (`deleteClaim: false`), 내부 plaintext bootstrap
-`finance-kafka-kafka-bootstrap.dev.svc.cluster.local:9092`를 사용한다.
+`finance-kafka-kafka-bootstrap.pipelines.svc.cluster.local:9092`를 사용한다.
 개발용이며 broker 중단 시 가용성은 없다. 모든 broker/Connect internal-topic replication factor와 min ISR은 1이다.
 `article-gold`는 선언형 KafkaTopic으로 1 partition/1 replica, 7일 보관한다.
 Connect internal topics는 worker가 명시적 AdminClient create로 생성하며 auto topic creation 비활성화와 충돌하지 않는다.
 
-[Argo CD Application](../../deploy/gitops/dev/kafka-application.yaml)은 위 세 파일만 관리한다.
+[Argo CD Application](../../deploy/gitops/kafka-application.yaml)은 위 세 파일만 관리한다.
 `main`에 구성 변경을 반영한 뒤 Application을 등록하면 Kafka와 토픽을 Git에서 동기화할 수 있다.
 
 ## 이미지와 안전한 활성화

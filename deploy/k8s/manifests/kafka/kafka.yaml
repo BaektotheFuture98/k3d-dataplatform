@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: finance-kafka
-  namespace: dev
+  namespace: pipelines
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: messaging

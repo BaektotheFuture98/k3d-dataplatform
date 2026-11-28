@@ -30,7 +30,7 @@ ingress:
   enabled: true
   ingressClassName: traefik
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: dev-headlamp-basic-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: platform-tools-headlamp-basic-auth@kubernetescrd
   hosts:
     - host: headlamp.tail481f72.ts.net
       paths:

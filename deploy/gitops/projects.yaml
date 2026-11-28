@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: default
-  namespace: argocd
+  namespace: platform-tools
 spec:
   sourceRepos: []
   destinations: []
@@ -13,21 +13,8 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: platform-dev
-  namespace: argocd
-spec:
-  sourceRepos:
-    - https://github.com/BaektotheFuture98/k3d-dataplatform.git
-  destinations:
-    - server: https://kubernetes.default.svc
-      namespace: dev
-  clusterResourceWhitelist: []
----
-apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
   name: platform-data
-  namespace: argocd
+  namespace: platform-tools
 spec:
   sourceRepos:
     - https://github.com/BaektotheFuture98/k3d-dataplatform.git
@@ -36,30 +23,4 @@ spec:
       namespace: lakehouse
     - server: https://kubernetes.default.svc
       namespace: pipelines
-  clusterResourceWhitelist: []
----
-apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
-  name: platform-stage
-  namespace: argocd
-spec:
-  sourceRepos:
-    - https://github.com/BaektotheFuture98/k3d-dataplatform.git
-  destinations:
-    - server: https://kubernetes.default.svc
-      namespace: stage
-  clusterResourceWhitelist: []
----
-apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
-  name: platform-prod
-  namespace: argocd
-spec:
-  sourceRepos:
-    - https://github.com/BaektotheFuture98/k3d-dataplatform.git
-  destinations:
-    - server: https://kubernetes.default.svc
-      namespace: prod
   clusterResourceWhitelist: []

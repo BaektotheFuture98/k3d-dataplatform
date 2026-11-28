@@ -16,7 +16,7 @@ Job은 완료되는 작업을 위한 컨트롤러다.
 
 | 예시 | 리소스 | 이유 |
 | --- | --- | --- |
-| `dev/headlamp` | Deployment | 상주 프로세스, 교체 가능한 Pod |
+| `platform-tools/headlamp` | Deployment | 상주 프로세스, 교체 가능한 Pod |
 | `jenkins/jenkins` | StatefulSet | 안정된 식별자와 데이터 볼륨 |
 | 이전 Airflow executor worker | 직접 생성한 임시 Pod | 태스크 하나 실행 후 정리 |
 | 향후 collector | Kubernetes Job 템플릿 | 작업 완료·실패·재시도 관리 |
@@ -26,13 +26,13 @@ KubernetesExecutor의 worker가 반드시 Job에 소속되는 것은 아니다.
 
 ## 현재 namespace
 
-2026-11-24 기준 앱 배포 대상은 `dev`·`stage`·`prod`이고, 이전 `finance-platform`은
-삭제됐다. Headlamp는 `dev`, Jenkins와 Argo CD는 `jenkins`와 `argocd`에 있다.
+데이터 스택은 `lakehouse`와 `pipelines`에 있다. Headlamp, Jenkins 컨트롤러, Argo CD는
+`platform-tools`에서 실행하며 Jenkins 빌드 Pod는 `ci-builds`에서 실행한다.
 `kube-system`의 CoreDNS는 서비스 이름을 IP로 해석하는 클러스터 DNS다.
 
 ```sh
-kubectl --context k3d-dev -n dev get pods,deployment
-kubectl --context k3d-dev -n jenkins get statefulset,pvc
+kubectl --context k3d-dev -n platform-tools get pods,deployment
+kubectl --context k3d-dev -n platform-tools get statefulset,pvc
 # 환경 권한이 허용하는 터미널에서 시스템 Pod도 조회한다.
 kubectl --context k3d-dev -n kube-system get pods
 ```
@@ -51,10 +51,10 @@ Deployment의 나이는 그보다 훨씬 오래됐을 수 있다.
 ## 실습: 주인을 따라가기
 
 ```sh
-kubectl --context k3d-dev -n dev get pods \
+kubectl --context k3d-dev -n platform-tools get pods \
   -o 'custom-columns=NAME:.metadata.name,OWNER_KIND:.metadata.ownerReferences[0].kind,OWNER:.metadata.ownerReferences[0].name'
-kubectl --context k3d-dev -n dev get replicasets
-kubectl --context k3d-dev -n jenkins get pods,statefulsets
+kubectl --context k3d-dev -n platform-tools get replicasets
+kubectl --context k3d-dev -n platform-tools get pods,statefulsets
 ```
 
 Deployment → ReplicaSet → Pod 순서와 StatefulSet → Pod 순서를 찾아본다.

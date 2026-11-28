@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: KafkaConnector
 metadata:
   name: neo4j-article-gold
-  namespace: dev
+  namespace: pipelines
   labels:
     strimzi.io/cluster: finance-connect
     app.kubernetes.io/name: neo4j-sink

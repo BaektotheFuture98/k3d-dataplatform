@@ -1,7 +1,7 @@
 # Headlamp password login
 
-Headlamp runs in the `dev` namespace of `k3d-dev`. The shared identity has
-cluster-wide `view` access and the `edit` role in `dev`.
+Headlamp runs in the `platform-tools` namespace of `k3d-dev`. The shared
+identity has cluster-wide `view` access and read access to cluster status.
 
 The requested shared login uses the `admin` username and the user-supplied
 password, stored only as a local BCrypt hash. Tailscale HTTPS remains the
@@ -21,12 +21,13 @@ and API server configuration. The selected configuration combines Traefik
 BasicAuth with Headlamp's `unsafeUseServiceAccountToken` option, supported in
 the pinned 0.46.0 chart and image.
 
-1. Prepare a BCrypt password hash in an ignored, mode-600 local Secret file.
+1. Prepare a BCrypt password hash in an ignored, mode-600 local Secret file
+   with `metadata.namespace: platform-tools`.
 2. Apply the existing RBAC and the password Secret and middleware first.
 3. Upgrade Headlamp 0.46.0 with the password-login settings in values.yaml.
 4. Verify no/wrong credentials return 401; correct credentials return 200 for
    both the UI and `/clusters/k3d-dev/api/v1/namespaces/{namespace}/pods`
-   for `dev`, `stage`, and `prod`.
+   for `lakehouse`, `pipelines`, and `platform-tools`.
 5. Verify API access still works after token rotation, and test browser login.
 
 ## Apply
@@ -34,12 +35,12 @@ the pinned 0.46.0 chart and image.
 From the repository root, with Helm and access to the `k3d-dev` API:
 
 ```sh
-kubectl --context k3d-dev -n dev apply -f deploy/k8s/helm/headlamp/access.yaml
-kubectl --context k3d-dev -n dev apply -f configs/headlamp/basic-auth-secret.local.json
-kubectl --context k3d-dev -n dev apply -f deploy/k8s/helm/headlamp/basic-auth.yaml
+kubectl --context k3d-dev -n platform-tools apply -f deploy/k8s/helm/headlamp/access.yaml
+kubectl --context k3d-dev -n platform-tools apply -f configs/headlamp/basic-auth-secret.local.json
+kubectl --context k3d-dev -n platform-tools apply -f deploy/k8s/helm/headlamp/basic-auth.yaml
 helm upgrade --install headlamp headlamp \
   --repo https://kubernetes-sigs.github.io/headlamp/ --version 0.46.0 \
-  --kube-context k3d-dev --namespace dev \
+  --kube-context k3d-dev --namespace platform-tools \
   -f deploy/k8s/helm/headlamp/values.yaml \
   --atomic --wait --timeout 3m
 ```

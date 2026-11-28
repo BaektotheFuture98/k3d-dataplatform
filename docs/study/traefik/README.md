@@ -41,7 +41,7 @@ hash를 검증하고 `removeHeader: true`로 Basic Authorization 헤더를 뒤�
 
 ```sh
 kubectl --context k3d-dev get ingress -A
-kubectl --context k3d-dev -n dev get middleware headlamp-basic-auth
+kubectl --context k3d-dev -n platform-tools get middleware headlamp-basic-auth
 kubectl --context k3d-dev get ingressroute -A
 ```
 

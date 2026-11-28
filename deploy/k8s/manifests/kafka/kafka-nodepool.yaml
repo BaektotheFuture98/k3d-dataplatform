@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: dual-role
-  namespace: dev
+  namespace: pipelines
   labels:
     strimzi.io/cluster: finance-kafka
     app.kubernetes.io/name: kafka

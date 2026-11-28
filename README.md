@@ -3,24 +3,23 @@
 기사 데이터를 수집·정제하고 Neo4j 그래프로 제공하기 위한 로컬 데이터 플랫폼이다.
 Mac의 Colima 위에서 k3d 단일 노드 클러스터를 사용한다.
 
-2026-11-27 기준 데이터 저장소는 `lakehouse`, 데이터 작업과 Airflow는 `pipelines`에 둔다.
-기존 `finance-platform`은 삭제됐으며, `dev`는 Kafka와 Headlamp를 운영한다.
+데이터 저장소는 `lakehouse`, Kafka와 데이터 작업은 `pipelines`에 둔다.
+운영 도구는 `platform-tools`, Jenkins 빌드 Pod는 `ci-builds`에서 실행한다.
 이전 데이터 스택의 실행·검증 결과는 [인프라 실행 기록](configs/runtime/VALIDATION.md)에 있다.
 
 ## 현재 클러스터 상태
 
 | 구성 | 버전 | 네임스페이스 | 상태 |
 | --- | --- | --- | --- |
-| Headlamp | 0.46.0 | `dev` | Ready |
-| Jenkins | 2.580.2, chart 5.13.3 | `jenkins` | Ready, `main` 검증 빌드 성공 |
-| Argo CD | 3.6.1, chart 10.18.0 | `argocd` | Ready, `dev` 검증 앱 `Synced / Healthy` |
+| Headlamp | 0.46.0 | `platform-tools` | Ready |
+| Jenkins | 2.580.2, chart 5.13.3 | `platform-tools` | `ci-builds`에서 `main` 검증 |
+| Argo CD | 3.6.1, chart 10.18.0 | `platform-tools` | `pipelines` 검증 앱 `Synced / Healthy` |
 | Traefik | 3.6.12 | `kube-system` | Ready |
-| Strimzi / Kafka | 0.51.0 / 4.2.0 | `dev` | 단일 KRaft 브로커, `article-gold` 토픽 준비 |
+| Strimzi / Kafka | 0.51.0 / 4.2.0 | `pipelines` | 단일 KRaft 브로커, `article-gold` 토픽 준비 |
 | PostgreSQL / Garage / Iceberg REST | 17.11 / 2.4.1 / 1.11.0 | `lakehouse` | Ready, Iceberg 테이블 4개 검증 |
 | Airflow | 3.0.2, chart 1.18.0 | `pipelines` | KubernetesExecutor 구성 |
 | Bronze→Silver / Silver→Gold | Spark 4.1.2 | `pipelines` | Deployment 등록, 각각 `replicas: 0` |
 
-`stage`와 `prod`는 네임스페이스와 Argo CD 배포 프로젝트가 준비되어 있다.
 JupyterLab, Neo4j, Kafka Connect, 기사 수집기와 Publisher는 미배포 상태다.
 데이터 스택의 저장소 버전과 이전 `finance-platform` 검증 내역은 아래에 기록한다.
 
@@ -120,14 +119,12 @@ Gold는 `(article_id, ont_version)`별 한 번 저장한다. 이미 분석한 �
 | Kubernetes | K3s `v1.35.5+k3s1` |
 | Colima VM | 8 CPU, 메모리 25.6GiB, 디스크 183GiB (`colima list` 표시값) |
 | Kubernetes 노드 자원 | 8 CPU, 메모리 약 25.0GiB |
-| 네임스페이스 | `lakehouse` 저장소, `pipelines` 데이터 작업, `dev` Kafka·Headlamp, `jenkins`·`argocd` CI/CD |
+| 네임스페이스 | `lakehouse` 저장소, `pipelines` Kafka·데이터 작업, `platform-tools` 운영 도구, `ci-builds` Jenkins agent |
 | StorageClass | `local-path`, RWO |
 | 네트워크 | 내부 ClusterIP Service, UI는 Traefik Ingress와 Mac 루프백 포트로 접속 |
 
 현재 PostgreSQL·Garage는 `lakehouse`의 각 10Gi PVC를 사용한다. Airflow는 `pipelines`의
-DAG 1Gi·로그 2Gi PVC를 사용한다. Jenkins와 Kafka는 각각 기존 10Gi PVC를 사용한다.
-전환 이전의 `dev` PostgreSQL·Garage·Iceberg REST는 중지했다. `dev`의 기존 PVC와
-배포 설정은 롤백용으로 보존한다.
+DAG 1Gi·로그 2Gi PVC를 사용한다. Jenkins는 `platform-tools`에, Kafka는 `pipelines`에 각각 10Gi PVC를 사용한다.
 아래 표는 이전 `finance-platform` 환경의 저장소 구성이다.
 
 | 이전 PVC | 요청 용량 | 저장 내용 |
@@ -147,18 +144,17 @@ PVC 또는 클러스터·Colima VM 삭제 시 데이터가 소실될 수 있다.
 Headlamp는 Tailscale에 연결한 기기에서 <https://headlamp.tail481f72.ts.net>으로 접속한다.
 Jenkins와 Argo CD의 UI는 로컬 포트포워딩으로 접속한다.
 
-Kubernetes 관리 화면 Headlamp 0.46.0은 `dev`에 배포한다. 기존 `admin` 계정으로
-로그인하면 `dev`·`stage`·`prod`를 조회할 수 있으며, 수정 권한은 `dev`에만 있다.
+Headlamp는 `platform-tools`에서 실행한다. 기존 `admin` 계정으로 로그인해서 클러스터 워크로드를 조회한다.
 설정과 복구 방법은 [Headlamp 안내](configs/headlamp/README.md)에 있다.
 
-CI/CD 도구는 `jenkins`와 `argocd` 네임스페이스에 각각 설치한다. Jenkins의 검증
-파이프라인과 Argo CD의 환경별 배포 설정은 [CI/CD 운영 안내](deploy/gitops/README.md)에 있다.
+Jenkins 컨트롤러와 Argo CD는 `platform-tools`에서 실행한다. Jenkins 검증 파이프라인과
+Argo CD 배포 설정은 [CI/CD 운영 안내](deploy/gitops/README.md)에 있다.
 
 ```sh
 kubectl --context k3d-dev get nodes -o wide
 kubectl --context k3d-dev get namespaces
 kubectl --context k3d-dev get deployments,statefulsets,pods,pvc -A
-kubectl --context k3d-dev -n argocd get application,appproject
+kubectl --context k3d-dev -n platform-tools get application,appproject
 ```
 
 Airflow UI는 `kubectl --context k3d-dev -n pipelines port-forward svc/airflow-api-server 18080:8080`으로
@@ -170,6 +166,7 @@ Airflow UI는 `kubectl --context k3d-dev -n pipelines port-forward svc/airflow-a
 | Garage S3 | `http://garage.lakehouse.svc:3900`, region `garage`, path-style |
 | Iceberg REST | `http://iceberg-rest.lakehouse.svc:8181` |
 | Airflow | `http://airflow-api-server.pipelines.svc:8080` |
+| Kafka | `finance-kafka-kafka-bootstrap.pipelines.svc.cluster.local:9092` |
 
 Airflow 관리자 계정은 `airflow-admin`, Jupyter 토큰은 `jupyter-auth`의 `token`,
 Neo4j 인증은 `neo4j-auth` Secret에서 관리한다.
@@ -256,7 +253,7 @@ docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 
 
 ## 남은 작업
 
-1. `dev`의 Strimzi, 단일 Kafka 브로커와 `article-gold` 토픽 구성을 준비했다. Neo4j와 인증 Secret을 준비한 뒤 Kafka Connect를 활성화하고 통합 검증한다.
+1. `pipelines`의 Strimzi, 단일 Kafka 브로커와 `article-gold` 토픽 구성을 준비했다. Neo4j와 인증 Secret을 준비한 뒤 Kafka Connect를 활성화하고 통합 검증한다.
 2. 기사 수집·Gold 발행 코드를 구현한다. 현재 로컬 업무 이미지는 필요할 때 Docker Hub에 게시한다.
 3. Airflow에 DAG·Job 템플릿·업무 RBAC를 연결하고 수집 Job부터 수동 검증한다.
 4. Gemini Secret과 실제 호출 범위를 준비하고 모델 응답·비용·쿼터 및 두 작업의 동시 실행 자원을 검증한다.

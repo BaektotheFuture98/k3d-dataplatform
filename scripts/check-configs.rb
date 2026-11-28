@@ -30,8 +30,7 @@ Dir['deploy/k8s/**/*.yaml'].sort.each do |path|
       service = path.split('/')[3]
       expected_namespace = case service
                            when 'postgres', 'garage', 'iceberg-rest' then 'lakehouse'
-                           when 'pipelines', 'spark' then 'pipelines'
-                           when 'kafka' then 'dev'
+                           when 'pipelines', 'spark', 'kafka' then 'pipelines'
                            else 'finance-platform'
                            end
       errors << "#{path}: namespace must be #{expected_namespace}" unless doc.dig('metadata', 'namespace') == expected_namespace

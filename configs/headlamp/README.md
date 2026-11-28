@@ -1,7 +1,7 @@
 # Headlamp
 
 공식 Helm chart 0.46.0과 이미지 `ghcr.io/headlamp-k8s/headlamp:v0.46.0`을
-`dev`에 설치한다. 별도 DB/PVC/플러그인 관리 sidecar는 사용하지 않는다.
+`platform-tools`에 설치한다. 별도 DB/PVC/플러그인 관리 sidecar는 사용하지 않는다.
 Pod 1개, CPU request/limit 100m/500m, 메모리 request/limit 128Mi/512Mi이다.
 설치 직후 측정값은 CPU 1m, 메모리 14Mi이며 사용량은 화면·작업에 따라 달라진다.
 
@@ -50,7 +50,7 @@ Traefik이 모든 Ingress 요청을 인증하며, Headlamp는 자동 갱신되�
 수동 토큰 로그인을 복구했을 때 사용할 명령은 다음과 같다.
 
 ```sh
-kubectl --context k3d-dev -n dev create token headlamp-user --duration=8h
+kubectl --context k3d-dev -n platform-tools create token headlamp-user --duration=8h
 ```
 
 처음 발급한 토큰은 `/private/tmp/finance-headlamp-login-token.txt`에 모드 600으로 저장했다.
@@ -61,9 +61,6 @@ kubectl --context k3d-dev -n dev create token headlamp-user --duration=8h
 
 - 클러스터 전역의 기본 `view` 역할: 일반 워크로드 및 로그 조회.
 - 노드·namespace·PV·metrics 읽기.
-- `dev` 네임스페이스의 기본 `edit` 역할. 워크로드 변경 및 Secret 접근을 포함한다.
-- `stage`와 `prod`의 워크로드는 전체 보기 또는 네임스페이스 필터에서 조회할 수 있다.
-- namespace 삭제, 다른 namespace 워크로드 변경, RBAC 변경 권한은 부여하지 않았다.
 
 UI 토큰 로그인 생략 옵션 `unsafeUseServiceAccountToken`은 true다.
 비밀번호 인증은 Traefik의 `headlamp-basic-auth` 미들웨어가 담당한다.
@@ -73,22 +70,22 @@ UI 토큰 로그인 생략 옵션 `unsafeUseServiceAccountToken`은 true다.
 ```sh
 # 공식 차트 0.46.0 다운로드 후 SHA-256 대조
 # faa471a8c5c55125b3dceed1cf73000e1ced18f07e2088e5e12e75292fb9ae62
-kubectl --context k3d-dev -n dev apply --dry-run=server \
+kubectl --context k3d-dev -n platform-tools apply --dry-run=server \
   -f deploy/k8s/helm/headlamp/access.yaml \
   -f configs/headlamp/basic-auth-secret.local.json \
   -f deploy/k8s/helm/headlamp/basic-auth.yaml
-kubectl --context k3d-dev -n dev apply \
+kubectl --context k3d-dev -n platform-tools apply \
   -f deploy/k8s/helm/headlamp/access.yaml \
   -f configs/headlamp/basic-auth-secret.local.json \
   -f deploy/k8s/helm/headlamp/basic-auth.yaml
 /private/tmp/finance-platform-tools/helm upgrade --install headlamp \
   /private/tmp/finance-platform-tools/headlamp-0.46.0.tgz \
-  --kube-context k3d-dev --namespace dev \
+  --kube-context k3d-dev --namespace platform-tools \
   -f deploy/k8s/helm/headlamp/values.yaml --hide-notes --atomic --wait --timeout 3m
 ```
 
 재배포 후 [비밀번호 로그인 검증 절차](BASIC-AUTH.md)에 따라 Ingress의 인증 응답과
-`dev`·`stage`·`prod`의 Pod 조회를 확인한다. 서비스 호스트의 DNS에서 서비스 이름이
+`lakehouse`·`pipelines`·`platform-tools`의 Pod 조회를 확인한다. 서비스 호스트의 DNS에서 서비스 이름이
 해석되지 않으면 tailnet 클라이언트에서 확인하거나 서비스 VIP에 `curl --resolve`로
 접속해 HTTPS 응답을 확인한다.
 

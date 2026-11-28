@@ -85,8 +85,8 @@ Kubernetes API server와 Airflow API server가 무엇이 다른지 설명한다.
 - 명령은 프로젝트 루트의 **Mac 터미널**에서 실행한다. `exec`가 있으면 지정한
   컨테이너 안에서 뒤쪽 명령을 실행한다. 출력 예시는 실제 관측 결과와 구분한다.
 - `--context k3d-dev`는 대상 클러스터 연결이고 `-n`은 네임스페이스 지정이다.
-  현재 환경은 `dev`·`stage`·`prod`이며 Headlamp는 `dev`, Jenkins와 Argo CD는 각각
-  `jenkins`와 `argocd`에 있다. 본문의 `-n finance-platform`은 이전 데이터 스택 실습 예제다.
+  데이터 스택은 `lakehouse`·`pipelines`에 있다. Headlamp, Jenkins 컨트롤러, Argo CD는
+  `platform-tools`에, Jenkins 빌드 Pod는 `ci-builds`에 있다. 본문의 `-n finance-platform`은 이전 실습 예제다.
   실습 전에 대상 서비스가 배포되어 있는지 [루트 README](../../README.md)의 명령으로 확인한다.
 - `port-forward`는 임시 연결이다. 터미널을 유지하고 끝낼 때 `Ctrl+C`로 종료한다.
 - 상태를 바꾸는 실습은 별도 표시한다. 문서 작성 중 배포·재시작·DAG 실행은 하지 않았다.

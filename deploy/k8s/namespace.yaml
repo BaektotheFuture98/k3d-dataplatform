@@ -13,3 +13,19 @@ metadata:
   labels:
     app.kubernetes.io/name: pipelines
     app.kubernetes.io/part-of: finance-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-tools
+  labels:
+    app.kubernetes.io/name: platform-tools
+    app.kubernetes.io/part-of: finance-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ci-builds
+  labels:
+    app.kubernetes.io/name: ci-builds
+    app.kubernetes.io/part-of: finance-platform

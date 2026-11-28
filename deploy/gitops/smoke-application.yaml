@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-dev-smoke
-  namespace: argocd
+  name: platform-data-smoke
+  namespace: platform-tools
 spec:
-  project: platform-dev
+  project: platform-data
   source:
     repoURL: https://github.com/BaektotheFuture98/k3d-dataplatform.git
     targetRevision: main
     path: deploy/gitops/dev/smoke
   destination:
     server: https://kubernetes.default.svc
-    namespace: dev
+    namespace: pipelines
   syncPolicy:
     automated:
       prune: false

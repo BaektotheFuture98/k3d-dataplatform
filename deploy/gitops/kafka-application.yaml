@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-dev-kafka
-  namespace: argocd
+  name: platform-data-kafka
+  namespace: platform-tools
 spec:
-  project: platform-dev
+  project: platform-data
   source:
     repoURL: https://github.com/BaektotheFuture98/k3d-dataplatform.git
     targetRevision: main
@@ -13,7 +13,7 @@ spec:
       include: '{kafka-nodepool.yaml,kafka.yaml,kafka-topics.yaml}'
   destination:
     server: https://kubernetes.default.svc
-    namespace: dev
+    namespace: pipelines
   syncPolicy:
     automated:
       selfHeal: true

@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: KafkaConnect
 metadata:
   name: finance-connect
-  namespace: dev
+  namespace: pipelines
   annotations:
     strimzi.io/use-connector-resources: "true"
   labels:

@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: platform-gitops-smoke
 data:
-  purpose: verify Argo CD reconciliation in dev
+  purpose: verify Argo CD reconciliation in the application destination
